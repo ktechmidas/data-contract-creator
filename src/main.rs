@@ -1,6 +1,7 @@
 use serde::{Serialize, Deserialize};
 use yew::{html, Component, Html, Event, InputEvent, FocusEvent, TargetCast};
-use serde_json::json;
+use serde_json::{json, Map};
+use web_sys::HtmlSelectElement;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(non_snake_case)]
@@ -30,13 +31,37 @@ impl Default for DocumentType {
 struct Property {
     name: String,
     data_type: DataType,
-    required: bool
+    required: bool,
+    description: Option<String>,
+    comment: Option<String>,
+    min_length: Option<u32>,  // For String data type
+    max_length: Option<u32>,  // For String data type
+    pattern: Option<String>,  // For String data type
+    format: Option<String>,   // For String data type
+    minimum: Option<i32>,     // For Integer data type
+    maximum: Option<i32>,     // For Integer data type
+    byte_array: Option<bool>,  // For Array data type
+    min_items: Option<u32>,    // For Array data type
+    max_items: Option<u32>,    // For Array data type
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 struct Index {
     name: String,
-    data_type: DataType,
+    properties: Vec<IndexProperties>,
+    unique: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct IndexProperties(String, String);
+
+impl Default for IndexProperties {
+    fn default() -> Self {
+        Self {
+            0: String::from(""),
+            1: String::from("asc")
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -59,8 +84,8 @@ enum Msg {
     AddDocumentType,
     AddProperty(usize),
     AddIndex(usize),
+    AddIndexProperty(usize, usize),
     RemoveDocumentType(usize),
-    RemoveDocumentTypeComment(usize),
     RemoveProperty(usize, usize),
     RemoveIndex(usize, usize),
     Submit,
@@ -69,13 +94,28 @@ enum Msg {
     UpdatePropertyName(usize, usize, String),
     UpdateIndexName(usize, usize, String),
     UpdatePropertyType(usize, usize, String),
-    UpdateIndexType(usize, usize, String),
-    UpdatePropertyRequired(usize, usize, bool)
+    UpdateIndexUnique(usize, usize, bool),
+    UpdateIndexSorting(usize, usize, usize, String),
+    UpdatePropertyRequired(usize, usize, bool),
+    UpdatePropertyDescription(usize, usize, String),
+    UpdatePropertyComment(usize, usize, String),
+    UpdateIndexProperty(usize, usize, usize, String),
+    UpdateStringPropertyMinLength(usize, usize, u32),
+    UpdateStringPropertyMaxLength(usize, usize, u32),
+    UpdateStringPropertyPattern(usize, usize, String),
+    UpdateStringPropertyFormat(usize, usize, String),
+    UpdateIntegerPropertyMinimum(usize, usize, i32),
+    UpdateIntegerPropertyMaximum(usize, usize, i32),
+    UpdateArrayPropertyByteArray(usize, usize, bool),
+    UpdateArrayPropertyMinItems(usize, usize, u32),
+    UpdateArrayPropertyMaxItems(usize, usize, u32),
 }
 
 impl Model {
     fn add_document_type(&mut self) {
-        self.document_types.push(Default::default());
+        let mut new_document_type = DocumentType::default();
+        new_document_type.properties.push(Property::default());
+        self.document_types.push(new_document_type);
     }
 
     fn remove_document_type(&mut self, index: usize) {
@@ -87,14 +127,19 @@ impl Model {
     }
 
     fn add_index(&mut self, index: usize) {
-        self.document_types[index].indices.push(Default::default());
-    }
-
-    fn remove_doc_type_comment(&mut self, index: usize) {
-        self.document_types[index].comment = String::from("");
+        self.document_types[index].indices.push(Index {
+            name: String::new(),
+            unique: false,
+            properties: vec![IndexProperties::default()],
+        });
     }
 
     fn remove_property(&mut self, doc_index: usize, prop_index: usize) {
+        let name = self.document_types[doc_index].properties[prop_index].name.clone();
+        let required = &mut self.document_types[doc_index].required;
+        if let Some(index) = required.iter().position(|x| x == &name) {
+            required.remove(index);
+        }
         self.document_types[doc_index].properties.remove(prop_index);
     }
 
@@ -102,61 +147,9 @@ impl Model {
         self.document_types[doc_index].indices.remove(index_index);
     }
 
-    fn generate_json_object(&mut self) -> Vec<String> {
-        let mut json_arr = Vec::new();
-        for doc_type in &mut self.document_types {
-            let mut props_arr = Vec::new();
-            for prop in &doc_type.properties {
-                let prop_obj = json!({
-                    "name": prop.name,
-                    "type": match prop.data_type {
-                        DataType::String => "string",
-                        DataType::Integer => "integer",
-                        DataType::Array => "array",
-                        DataType::Object => "object",
-                        DataType::Number => "number",
-                        DataType::Boolean => "bool",
-                    }
-                });
-                props_arr.push(prop_obj);
-                if prop.required {
-                    if !doc_type.required.contains(&prop.name) {
-                        doc_type.required.push(prop.name.clone());
-                    }
-                } else {
-                    if doc_type.required.contains(&prop.name) {
-                        doc_type.required.retain(|x| x != &prop.name);
-                    }
-                }
-            }
-            let mut indices_arr = Vec::new();
-            for index in &doc_type.indices {
-                let index_obj = json!({
-                    "name": index.name,
-                    "unique": match index.data_type {
-                        DataType::String => "string",
-                        DataType::Integer => "integer",
-                        DataType::Array => "array",
-                        DataType::Object => "object",
-                        DataType::Number => "number",
-                        DataType::Boolean => "bool",
-                    }
-                });
-                indices_arr.push(index_obj);
-            }
-            let doc_obj = json!({
-                doc_type.name.clone(): {
-                "properties": props_arr,
-                "indices": indices_arr,
-                "required": doc_type.required,
-                "additionalProperties": false,
-                "comment": doc_type.comment
-            }});
-            let formatted_doc_obj = &doc_obj.to_string()[1..doc_obj.to_string().len()-1];
-            json_arr.push(formatted_doc_obj.to_string());
-        }
-        json_arr
-    }    
+    fn add_index_property(&mut self, doc_index: usize, index_index: usize) {
+        self.document_types[doc_index].indices[index_index].properties.push(Default::default());
+    }
 
     fn update_name(&mut self, index: usize, name: String) {
         self.document_types[index].name = name;
@@ -174,30 +167,29 @@ impl Model {
         self.document_types[doc_index].indices[index_index].name = name;
     }
 
+    fn update_index_property(&mut self, doc_index: usize, index_index: usize, prop_index: usize, prop: String) {
+        self.document_types[doc_index].indices[index_index].properties[prop_index].0 = prop;
+    }
+
     fn update_property_type(&mut self, doc_index: usize, prop_index: usize, data_type: String) {
         let data_type = match data_type.as_str() {
-            "string" => DataType::String,
-            "integer" => DataType::Integer,
-            "array" => DataType::Array,
-            "object" => DataType::Object,
-            "number" => DataType::Number,
-            "bool" => DataType::Boolean,
+            "String" => DataType::String,
+            "Integer" => DataType::Integer,
+            "Array" => DataType::Array,
+            "Object" => DataType::Object,
+            "Number" => DataType::Number,
+            "Boolean" => DataType::Boolean,
             _ => unreachable!(),
         };
         self.document_types[doc_index].properties[prop_index].data_type = data_type;
     }
 
-    fn update_index_type(&mut self, doc_index: usize, index_index: usize, data_type: String) {
-        let data_type = match data_type.as_str() {
-            "string" => DataType::String,
-            "integer" => DataType::Integer,
-            "array" => DataType::Array,
-            "object" => DataType::Object,
-            "number" => DataType::Number,
-            "bool" => DataType::Boolean,
-            _ => unreachable!(),
-        };
-        self.document_types[doc_index].indices[index_index].data_type = data_type;
+    fn update_index_unique(&mut self, doc_index: usize, index_index: usize, unique: bool) {
+        self.document_types[doc_index].indices[index_index].unique = unique;
+    }
+
+    fn update_index_sorting(&mut self, doc_index: usize, index_index: usize, prop_index: usize, sorting: String) {
+        self.document_types[doc_index].indices[index_index].properties[prop_index].1 = sorting;
     }
 
     fn update_property_required(&mut self, doc_index: usize, prop_index: usize, required: bool) {
@@ -214,33 +206,20 @@ impl Model {
 
     fn view_document_type(&self, index: usize, ctx: &yew::Context<Self>) -> Html {
         html! {
-            <div>
+            <>
+            <div class="input-container">
                 <div>
-                    <h2>{format!("Doc type {}", index+1)}</h2>
+                    <h2>{format!("Document type {}", index+1)}</h2>
                     <h3>{"Name"}</h3>
                     <input type="text" placeholder="Name" value={self.document_types[index].name.clone()} onblur={ctx.link().callback(move |e: FocusEvent| Msg::UpdateName(index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} />
-                    <button onclick={ctx.link().callback(move |_| Msg::RemoveDocumentType(index))}>{"Remove"}</button>
-                </div>
-                <div>
-                    <h3>{"Comment"}</h3>
-                    <input type="text" placeholder="Comment" value={self.document_types[index].comment.clone()} onblur={ctx.link().callback(move |e: FocusEvent| Msg::UpdateComment(index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} />
-                    <button onclick={ctx.link().callback(move |_| Msg::RemoveDocumentTypeComment(index))}>{"Remove"}</button>
                 </div>
                 <div>
                     <h3>{"Properties"}</h3>
                     <table>
-                        <thead>
-                            <tr>
-                                <th>{if self.document_types[index].properties.len() > 0 {"Name"} else {""}}</th>
-                                <th>{if self.document_types[index].properties.len() > 0 {"Type"} else {""}}</th>
-                                <th>{if self.document_types[index].properties.len() > 0 {"Required"} else {""}}</th>
-                                <th>{if self.document_types[index].properties.len() > 0 {"Remove"} else {""}}</th>
-                            </tr>
-                        </thead>
                         <tbody>
                             {for (0..self.document_types[index].properties.len()).map(|i| self.view_property(index, i, ctx))}
                             <tr>
-                                <td><button onclick={ctx.link().callback(move |_| Msg::AddProperty(index))}>{"+"}</button></td>
+                                <td><button class="button" onclick={ctx.link().callback(move |_| Msg::AddProperty(index))}>{"Add property"}</button></td>
                             </tr>
                         </tbody>
                     </table>
@@ -248,100 +227,305 @@ impl Model {
                 <div>
                     <h3>{"Indices"}</h3>
                     <table>
-                        <thead>
-                            <tr>
-                                <th>{if self.document_types[index].indices.len() > 0 {"Name"} else {""}}</th>
-                                <th>{if self.document_types[index].indices.len() > 0 {"Unique"} else {""}}</th>
-                                <th>{if self.document_types[index].indices.len() > 0 {"Remove"} else {""}}</th>
-                            </tr>
-                        </thead>
                         <tbody>
                             {for (0..self.document_types[index].indices.len()).map(|i| self.view_index(index, i, ctx))}
                             <tr>
-                                <td><button onclick={ctx.link().callback(move |_| Msg::AddIndex(index))}>{"+"}</button></td>
+                                <td><button class="button" onclick={ctx.link().callback(move |_| Msg::AddIndex(index))}>{"Add index"}</button></td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
+                <div>
+                    <h3>{"Comment"}</h3>
+                    <input type="text2" placeholder="Comment" value={self.document_types[index].comment.clone()} onblur={ctx.link().callback(move |e: FocusEvent| Msg::UpdateComment(index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} />
+                </div>
+                <br/>
+                <div>
+                <button class="button" onclick={ctx.link().callback(move |_| Msg::RemoveDocumentType(index))}>{"Remove document type"}</button>
+                </div>
             </div>
+            <br/>
+            </>
         }
     }
 
     fn view_property(&self, doc_index: usize, prop_index: usize, ctx: &yew::Context<Self>) -> Html {
-        let data_type_options = vec!["string", "integer", "array", "object", "number", "boolean"];
+        let data_type_options = vec!["String", "Integer", "Array", "Object", "Number", "Boolean"];
         let selected_data_type = match self.document_types[doc_index].properties[prop_index].data_type {
-            DataType::String => String::from("string"),
-            DataType::Integer => String::from("integer"),
-            DataType::Array => String::from("array"),
-            DataType::Object => String::from("object"),
-            DataType::Number => String::from("number"),
-            DataType::Boolean => String::from("bool"),
+            DataType::String => String::from("String"),
+            DataType::Integer => String::from("Integer"),
+            DataType::Array => String::from("Array"),
+            DataType::Object => String::from("Object"),
+            DataType::Number => String::from("Number"),
+            DataType::Boolean => String::from("Boolean"),
         };
+        let additional_properties = self.render_additional_properties(&selected_data_type, doc_index, prop_index, ctx);
         html! {
-            <tr>
-                <td><input type="text" placeholder="Property name" value={self.document_types[doc_index].properties[prop_index].name.clone()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdatePropertyName(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} /></td>
-                <td>
-                    <select onchange={ctx.link().callback(move |e: Event| Msg::UpdatePropertyType(doc_index, prop_index, match e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value().as_str() {
-                        "string" => String::from("string"),
-                        "integer" => String::from("integer"),
-                        "array" => String::from("array"),
-                        "object" => String::from("object"),
-                        "number" => String::from("number"),
-                        "boolean" => String::from("bool"),
-                        _ => panic!("Invalid data type selected"),
-                    }))}>
-                        {for data_type_options.iter().map(|option| html! {
-                            <option value={*option} selected={option==&selected_data_type}>{*option}</option>
-                        })}
-                    </select>
-                </td>
-                <td><input type="checkbox" checked={self.document_types[doc_index].properties[prop_index].required} onchange={ctx.link().callback(move |e: Event| Msg::UpdatePropertyRequired(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().checked()))} /></td>
-                <td><button onclick={ctx.link().callback(move |_| Msg::RemoveProperty(doc_index, prop_index))}>{"Remove"}</button></td>
-            </tr>
+            <>
+                <tr>
+                    <th>{"Name"}</th>
+                    <th>{"Type"}</th>
+                    <th>{"Required"}</th>
+                </tr>
+                <tr>
+                    <td><input type="text3" placeholder={format!("Property {} name", prop_index+1)} value={self.document_types[doc_index].properties[prop_index].name.clone()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdatePropertyName(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} /></td>
+                    <td>
+                        <select value={selected_data_type.clone()} onchange={ctx.link().callback(move |e: Event| Msg::UpdatePropertyType(doc_index, prop_index, match e.target_dyn_into::<HtmlSelectElement>().unwrap().value().as_str() {
+                            "String" => String::from("String"),
+                            "Integer" => String::from("Integer"),
+                            "Array" => String::from("Array"),
+                            "Object" => String::from("Object"),
+                            "Number" => String::from("Number"),
+                            "Boolean" => String::from("Boolean"),
+                            _ => panic!("Invalid data type selected"),
+                        }))}>
+                            {for data_type_options.iter().map(|option| html! {
+                                <option value={String::from(*option)} selected={&String::from(*option)==&selected_data_type}>{String::from(*option)}</option>
+                            })}
+                        </select>
+                    </td>
+                    <td><input type="checkbox" checked={self.document_types[doc_index].properties[prop_index].required} onchange={ctx.link().callback(move |e: Event| Msg::UpdatePropertyRequired(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().checked()))} /></td>
+                    <td><button class="button" onclick={ctx.link().callback(move |_| Msg::RemoveProperty(doc_index, prop_index))}>{"Remove"}</button></td>
+                </tr>
+                <p><b>{"Optional parameters:"}</b></p>
+                <tr>
+                    <td colspan="4">
+                        <table>
+                            <tr>
+                                <td><label>{"Description: "}</label></td>
+                                <td><input type="text3" value={self.document_types[doc_index].properties[prop_index].description.clone()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdatePropertyDescription(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} /></td>
+                            </tr>
+                            {additional_properties}
+                            <tr>
+                                <td><label>{"Comment: "}</label></td><td><input type="text3" value={self.document_types[doc_index].properties[prop_index].comment.clone()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdatePropertyComment(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} /></td>
+                                <p></p>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </>
+        }
+    }
+
+    fn render_additional_properties(&self, data_type: &String, doc_index: usize, prop_index: usize, ctx: &yew::Context<Self>) -> Html {
+        match data_type.as_str() {
+            "String" => html! {
+                <>
+                <tr>
+                    <td><label>{"Min length: "}</label></td>
+                    <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateStringPropertyMinLength(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
+                </tr>
+                <tr>
+                    <td><label>{"Max length: "}</label></td>
+                    <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateStringPropertyMaxLength(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
+                </tr>
+                <tr>
+                    <td><label>{"RE2 pattern: "}</label></td>
+                    <td><input type="text3" oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateStringPropertyPattern(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} /></td>
+                </tr>
+                <tr>
+                    <td><label>{"Format: "}</label></td>
+                    <td><input type="text3" oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateStringPropertyFormat(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} /></td>
+                </tr>
+                </>
+            },
+            "Integer" => html! {
+                <>
+                <tr>
+                    <td><label>{"Minimum: "}</label></td>
+                    <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateIntegerPropertyMinimum(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as i32))} /></td>
+                </tr>
+                <tr>
+                    <td><label>{"Maximum: "}</label></td>
+                    <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateIntegerPropertyMaximum(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as i32))} /></td>
+                </tr>
+                </>
+            },
+            "Array" => html! {
+                <>
+                <tr>
+                    <td><label>{"Byte array: "}</label></td>
+                    <td><input type="checkbox" checked={self.document_types[doc_index].properties[prop_index].byte_array.unwrap_or(false)} onchange={ctx.link().callback(move |e: Event| Msg::UpdateArrayPropertyByteArray(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().checked()))} /></td>
+                </tr>
+                <tr>
+                    <td><label>{"Min items: "}</label></td>
+                    <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateArrayPropertyMaxItems(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
+                </tr>
+                <tr>
+                    <td><label>{"Max items: "}</label></td>
+                    <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateArrayPropertyMinItems(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
+                </tr>
+                </>
+            },
+            _ => html! {},
         }
     }
 
     fn view_index(&self, doc_index: usize, index_index: usize, ctx: &yew::Context<Self>) -> Html {
-        let data_type_options = vec!["string", "integer", "array", "object", "number", "boolean"];
-        let selected_data_type = match self.document_types[doc_index].indices[index_index].data_type {
-            DataType::String => String::from("string"),
-            DataType::Integer => String::from("integer"),
-            DataType::Array => String::from("array"),
-            DataType::Object => String::from("object"),
-            DataType::Number => String::from("number"),
-            DataType::Boolean => String::from("boolean"),
-        };
         html! {
+            <>
             <tr>
-                <td><input type="text" placeholder="Index name" value={self.document_types[doc_index].indices[index_index].name.clone()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateIndexName(doc_index, index_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} /></td>
-                <td>
-                    <select onchange={ctx.link().callback(move |e: Event| Msg::UpdateIndexType(doc_index, index_index, match e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value().as_str() {
-                        "string" => String::from("string"),
-                        "integer" => String::from("integer"),
-                        "array" => String::from("array"),
-                        "object" => String::from("object"),
-                        "number" => String::from("number"),
-                        "boolean" => String::from("bool"),
-                        _ => panic!("Invalid data type selected"),
-                    }))}>
-                        {for data_type_options.iter().map(|option| html! {
-                            <option value={*option} selected={option==&selected_data_type}>{option}</option>
-                        })}
-                    </select>
-                </td>
-                <td><button onclick={ctx.link().callback(move |_| Msg::RemoveIndex(doc_index, index_index))}>{"Remove"}</button></td>
+                <th>{"Name"}</th>
+                <th>{"Unique"}</th>
+                <th>{""}</th>
             </tr>
+            <tr>
+                <td><input type="text3" placeholder={format!("Index {} name", index_index+1)} value={self.document_types[doc_index].indices[index_index].name.clone()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateIndexName(doc_index, index_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} /></td>
+                <td><input type="checkbox" checked={self.document_types[doc_index].indices[index_index].unique} onchange={ctx.link().callback(move |e: Event| Msg::UpdateIndexUnique(doc_index, index_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().checked()))} /></td>
+                <td><button class="button" onclick={ctx.link().callback(move |_| Msg::RemoveIndex(doc_index, index_index))}>{"Remove"}</button></td>
+            </tr>
+            <tr>
+                <td colspan="3">
+                    <table>
+                        <tbody>
+                            <p><b>{"Index properties:"}</b></p>
+                            <div>{for (0..self.document_types[doc_index].indices[index_index].properties.len()).map(|i| self.view_index_properties(doc_index, index_index, i, ctx))}</div>
+                        </tbody>
+                    </table>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2"><button class="button" onclick={ctx.link().callback(move |_| Msg::AddIndexProperty(doc_index, index_index))}>{"Add index property"}</button></td>
+            </tr>
+            <p></p>
+            </>
         }
+    }    
+
+    fn view_index_properties(&self, doc_index: usize, index_index: usize, prop_index: usize, ctx: &yew::Context<Self>) -> Html {
+        let sorting_options = vec!["Ascending", "Descending"];
+        html!(
+            <tr>
+                <td></td>
+                <td><label>{format!("Property {}: ", prop_index+1)}</label><input type="text3" value={self.document_types[doc_index].indices[index_index].properties[prop_index].0.clone()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateIndexProperty(doc_index, index_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} /></td>
+                <td><select value={sorting_options[0]} onchange={ctx.link().callback(move |e: Event| Msg::UpdateIndexSorting(doc_index, index_index, prop_index, match e.target_dyn_into::<HtmlSelectElement>().unwrap().value().as_str() {
+                    "Ascending" => String::from("asc"),
+                    "Descending" => String::from("desc"),
+                    _ => panic!("Invalid data type selected"),
+                }))}>
+                    {for sorting_options.iter().map(|option| html! {
+                        <option value={String::from(*option)} selected={&String::from(*option)==sorting_options[0]}>{String::from(*option)}</option>
+                    })}
+                </select></td>
+            </tr>
+        )
     }
-}
+
+    fn generate_json_object(&mut self) -> Vec<String> {
+        let mut json_arr = Vec::new();
+        for doc_type in &mut self.document_types {
+            let mut props_map = Map::new();
+            for prop in &doc_type.properties {
+                let mut prop_obj = Map::new();
+                prop_obj.insert("type".to_owned(), json!(match prop.data_type {
+                    DataType::String => "string",
+                    DataType::Integer => "integer",
+                    DataType::Array => "array",
+                    DataType::Object => "object",
+                    DataType::Number => "number",
+                    DataType::Boolean => "bool",
+                }));
+                if prop.description.as_ref().map(|c| c.len()).unwrap_or(0) > 0 {
+                    prop_obj.insert("description".to_owned(), json!(prop.description));
+                }
+                if prop.min_length.as_ref().map(|c| *c).unwrap_or(0) > 0 {
+                    prop_obj.insert("minLength".to_owned(), json!(prop.min_length));
+                }
+                if prop.max_length.as_ref().map(|c| *c).unwrap_or(0) > 0 {
+                    prop_obj.insert("maxLength".to_owned(), json!(prop.max_length));
+                }
+                if prop.pattern.as_ref().map(|c| c.len()).unwrap_or(0) > 0 {
+                    prop_obj.insert("pattern".to_owned(), json!(prop.pattern));
+                }
+                if prop.format.as_ref().map(|c| c.len()).unwrap_or(0) > 0 {
+                    prop_obj.insert("format".to_owned(), json!(prop.format));
+                }
+                if prop.minimum.as_ref().map(|c| *c).unwrap_or(0) > 0 {
+                    prop_obj.insert("minimum".to_owned(), json!(prop.minimum));
+                }
+                if prop.maximum.as_ref().map(|c| *c).unwrap_or(0) > 0 {
+                    prop_obj.insert("maximum".to_owned(), json!(prop.maximum));
+                }
+                if let Some(byte_array) = prop.byte_array {
+                    prop_obj.insert("byteArray".to_owned(), json!(byte_array));
+                }
+                if prop.min_items.as_ref().map(|c| *c).unwrap_or(0) > 0 {
+                    prop_obj.insert("minItems".to_owned(), json!(prop.min_items));
+                }
+                if prop.max_items.as_ref().map(|c| *c).unwrap_or(0) > 0 {
+                    prop_obj.insert("maxItems".to_owned(), json!(prop.max_items));
+                }
+                if prop.comment.as_ref().map(|c| c.len()).unwrap_or(0) > 0 {
+                    prop_obj.insert("$comment".to_owned(), json!(prop.comment));
+                }
+                props_map.insert(prop.name.clone(), json!(prop_obj));
+                if prop.required {
+                    if !doc_type.required.contains(&prop.name) {
+                        doc_type.required.push(prop.name.clone());
+                    }
+                } else {
+                    if doc_type.required.contains(&prop.name) {
+                        doc_type.required.retain(|x| x != &prop.name);
+                    }
+                }
+            }
+            let mut indices_arr = Vec::new();
+            for index in &doc_type.indices {
+                if index.unique {
+                    let index_obj = json!({
+                        "name": index.name,
+                        "properties": index.properties.iter().map(|inner_tuple| {
+                            let mut inner_obj = Map::new();
+                            inner_obj.insert(inner_tuple.0.clone(), json!(inner_tuple.1));
+                            json!(inner_obj)
+                        }).collect::<Vec<_>>(),
+                        "unique": index.unique,
+                    });
+                    indices_arr.push(index_obj);
+                } else {
+                    let index_obj = json!({
+                        "name": index.name,
+                        "properties": index.properties.iter().map(|inner_tuple| {
+                            let mut inner_obj = Map::new();
+                            inner_obj.insert(inner_tuple.0.clone(), json!(inner_tuple.1));
+                            json!(inner_obj)
+                        }).collect::<Vec<_>>(),
+                    });
+                    indices_arr.push(index_obj);
+                }
+            }
+            let mut doc_obj = Map::new();
+            doc_obj.insert("type".to_owned(), json!("object"));
+            doc_obj.insert("properties".to_owned(), json!(props_map));
+            if !doc_type.indices.is_empty() {
+                doc_obj.insert("indices".to_owned(), json!(indices_arr));
+            }
+            if !doc_type.required.is_empty() {
+                doc_obj.insert("required".to_owned(), json!(doc_type.required));
+            }
+            doc_obj.insert("additionalProperties".to_owned(), json!(false));
+            if doc_type.comment.len() > 0 {
+                doc_obj.insert("$comment".to_owned(), json!(doc_type.comment));
+            }
+            let final_doc_obj = json!({
+                doc_type.name.clone(): doc_obj
+            });
+            let formatted_doc_obj = &final_doc_obj.to_string()[1..final_doc_obj.to_string().len()-1];
+            json_arr.push(formatted_doc_obj.to_string());
+        }
+        json_arr
+    }    
+}    
 
 impl Component for Model {
     type Message = Msg;
     type Properties = ();
 
     fn create(_ctx: &yew::Context<Self>) -> Self {
+        let mut default_document_type = DocumentType::default();
+        default_document_type.properties.push(Property::default());
         Self {
-            document_types: vec![],
+            document_types: vec![default_document_type],
             json_object: vec![],
         }
     }
@@ -364,16 +548,16 @@ impl Component for Model {
                 self.remove_document_type(index);
                 true
             }
-            Msg::RemoveDocumentTypeComment(index) => {
-                self.remove_doc_type_comment(index);
-                true
-            }
             Msg::RemoveProperty(doc_index, prop_index) => {
                 self.remove_property(doc_index, prop_index);
                 true
             }
             Msg::RemoveIndex(doc_index, index_index) => {
                 self.remove_index(doc_index, index_index);
+                true
+            }
+            Msg::AddIndexProperty(doc_index, index_index) => {
+                self.add_index_property(doc_index, index_index);
                 true
             }
             Msg::Submit => {
@@ -396,16 +580,68 @@ impl Component for Model {
                 self.update_index_name(doc_index, index_index, name);
                 true
             }
+            Msg::UpdateIndexProperty(doc_index, index_index, prop_index, prop) => {
+                self.update_index_property(doc_index, index_index, prop_index, prop);
+                true
+            }
+            Msg::UpdateIndexSorting(doc_index, index_index, prop_index, sorting) => {
+                self.update_index_sorting(doc_index, index_index, prop_index, sorting);
+                true
+            }
             Msg::UpdatePropertyType(doc_index, prop_index, data_type) => {
                 self.update_property_type(doc_index, prop_index, data_type);
                 true
             }
-            Msg::UpdateIndexType(doc_index, index_index, data_type) => {
-                self.update_index_type(doc_index, index_index, data_type);
+            Msg::UpdateIndexUnique(doc_index, index_index, unique) => {
+                self.update_index_unique(doc_index, index_index, unique);
                 true
             }
             Msg::UpdatePropertyRequired(doc_index, prop_index, required) => {
                 self.update_property_required(doc_index, prop_index, required);
+                true
+            }
+            Msg::UpdatePropertyDescription(doc_index, prop_index, description) => {
+                self.document_types[doc_index].properties[prop_index].description = Some(description);
+                true
+            }
+            Msg::UpdatePropertyComment(doc_index, prop_index, comment) => {
+                self.document_types[doc_index].properties[prop_index].comment = Some(comment);
+                true
+            }
+            Msg::UpdateStringPropertyMinLength(doc_index, prop_index, min_length) => {
+                self.document_types[doc_index].properties[prop_index].min_length = Some(min_length);
+                true
+            }
+            Msg::UpdateStringPropertyMaxLength(doc_index, prop_index, max_length) => {
+                self.document_types[doc_index].properties[prop_index].max_length = Some(max_length);
+                true
+            }
+            Msg::UpdateStringPropertyPattern(doc_index, prop_index, pattern) => {
+                self.document_types[doc_index].properties[prop_index].pattern = Some(pattern);
+                true
+            }
+            Msg::UpdateStringPropertyFormat(doc_index, prop_index, format) => {
+                self.document_types[doc_index].properties[prop_index].format = Some(format);
+                true
+            }
+            Msg::UpdateIntegerPropertyMinimum(doc_index, prop_index, minimum) => {
+                self.document_types[doc_index].properties[prop_index].minimum = Some(minimum);
+                true
+            }
+            Msg::UpdateIntegerPropertyMaximum(doc_index, prop_index, maximum) => {
+                self.document_types[doc_index].properties[prop_index].maximum = Some(maximum);
+                true
+            }
+            Msg::UpdateArrayPropertyByteArray(doc_index, prop_index, byte_array) => {
+                self.document_types[doc_index].properties[prop_index].byte_array = Some(byte_array);
+                true
+            }
+            Msg::UpdateArrayPropertyMinItems(doc_index, prop_index, min_items) => {
+                self.document_types[doc_index].properties[prop_index].min_items = Some(min_items);
+                true
+            }
+            Msg::UpdateArrayPropertyMaxItems(doc_index, prop_index, max_items) => {
+                self.document_types[doc_index].properties[prop_index].max_items = Some(max_items);
                 true
             }
         }
@@ -414,28 +650,55 @@ impl Component for Model {
     fn view(&self, ctx: &yew::Context<Self>) -> Html {        
         // html
         html! {
-            <div>
-                <h1>{"Data Contract Creator"}</h1>
-                
+            <main class="home">
+            <img class="logo" src="https://logotyp.us/files/dash.svg?ver20230225" alt="Dash logo" width="400" height="200" />
+            <h1 class="header">{"Data Contract Creator"}</h1>
+            <body>
+            <div class="column-left">
+
                 // show input fields
-                {self.view_document_types(ctx)}
+                <p class="input-fields">{self.view_document_types(ctx)}</p>
 
-                // add input fields for another document type and add one to Self::document_types
-                <p><button onclick={ctx.link().callback(|_| Msg::AddDocumentType)}>{"Add document type"}</button></p>
+                <div class="button-container">
+                    // add input fields for another document type and add one to Self::document_types
+                    <><button class="button2" onclick={ctx.link().callback(|_| Msg::AddDocumentType)}>{"Add document type"}</button></>
 
-                // look at document_types and generate json object from it
-                <p><button onclick={ctx.link().callback(|_| Msg::Submit)}>{"Submit"}</button></p>
-
+                    // look at document_types and generate json object from it
+                    <p><button class="button button-primary" onclick={ctx.link().callback(|_| Msg::Submit)}>{"Submit"}</button></p>
+                </div>
+            </div>
+            <div class="column-right">
+            
                 // format and display json object
-                <p>
-                {if self.json_object.len() != 0 as usize {
-                    let s = &self.json_object.join(",");
-                    let new_s = format!("{{{}}}", s);
-                    new_s.to_string()
-                } else { "".to_string() }}
+                <p class="output-container">
+                    <h2>{"Contract"}</h2>
+                    <h3>{if self.json_object.len() != 0 as usize {"With whitespace:"} else {""}}</h3>
+                    <pre>
+                    {if self.json_object.len() != 0 as usize {
+                        let s = &self.json_object.join(",");
+                        let new_s = format!("{{{}}}", s);
+                        let json_obj: serde_json::Value = serde_json::from_str(&new_s).unwrap();
+                        serde_json::to_string_pretty(&json_obj).unwrap()
+                    } else { 
+                        "".to_string()
+                    }}
+                    </pre>
+                    <h3>{if self.json_object.len() != 0 as usize {"Without whitespace:"} else {""}}</h3>
+                    <pre>
+                    {if self.json_object.len() != 0 as usize {
+                        let s = &self.json_object.join(",");
+                        let new_s = format!("{{{}}}", s);
+                        let json_obj: serde_json::Value = serde_json::from_str(&new_s).unwrap();
+                        serde_json::to_string(&json_obj).unwrap()
+                    } else { 
+                        "".to_string()
+                    }}
+                    </pre>
                 </p>
 
             </div>
+            </body>
+            </main>
         }
     }
 }

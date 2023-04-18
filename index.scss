@@ -1,65 +1,188 @@
+/* theme */
+$primary-color: #008de4;
+$text-color: #444544;
+$text-color-bg-primary: rgb(233, 233, 233);
+$dark-color: #111111;
+$light-gray: #b6b6b6;
+$light-blue: #008de4;
+
+@import url('https://fonts.googleapis.com/css2?family=Nunito&display=swap');
+
+html,
 body {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 200vh;
-}
-
-.container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  border: 1px solid black;
+  height: 100%;
+  margin: 0;
   padding: 20px;
+  padding-top: 5px;
+  min-height: 100vh;
+}
+
+/* General components */
+input[type="text"] {
+  border: 2px solid $light-gray;
+  border-radius: 4px;
+  padding: 0.5rem;
+  width: 50%;
+  &:focus {
+    outline: none;
+    border-color: $light-blue;
+  }
+  &.error {
+    border-color: red;
+  }
+}
+
+input[type="text2"] {
+  border: 2px solid $light-gray;
+  border-radius: 4px;
+  padding: 0.5rem;
+  width: 95%;
+  &:focus {
+    outline: none;
+    border-color: $light-blue;
+  }
+  &.error {
+    border-color: red;
+  }
+}
+
+input[type="text3"] {
+  border: 2px solid $light-gray;
+  border-radius: 4px;
+  padding: 0.5rem;
+  width: 280px;
+  &:focus {
+    outline: none;
+    border-color: $light-blue;
+  }
+  &.error {
+    border-color: red;
+  }
+}
+
+input[type="checkbox"] {
+  width: 100px;
+}
+
+input[type="number"] {
+  border: 2px solid $light-gray;
+  border-radius: 4px;
+  padding: 0.5rem;
+  width: 280px;
+  &:focus {
+    outline: none;
+    border-color: $light-blue;
+  }
+  &.error {
+    border-color: red;
+  }
+}
+
+select {
+  width: 75px;
+}
+
+/* Buttons styles */
+.button {
+  border: none;
+  background-color: #008de4;
+  color: $text-color-bg-primary;
+  padding: 10px 20px;
   border-radius: 5px;
-  background-color: #f5f5f5;
+  margin-top: 2px;
+  margin-bottom: 2px;
+  &:hover {
+    cursor: pointer;
+  }
 }
 
-h1 {
+.button2 {
+  border: none;
+  background-color: rgb(233, 233, 233);
+  padding: 10px 20px;
+  border-radius: 5px;
+  margin-top: 2px;
+  margin-bottom: 2px;
+  &:hover {
+    cursor: pointer;
+  }
+}
+
+.button-primary {
+  background-color: $primary-color;
+  color: $text-color-bg-primary;
+  font-size: 1.2em;
+}
+
+/* Layout */
+main {
+  font-family: 'Nunito', sans-serif;
+}
+
+.home {
+  display: flex;
+  flex-direction: column;
+  justify-content: top;
+  height: 100%;
+  width: 100%;
+}
+
+.table {
+  align-items: left;
+  width: 100%
+}
+
+.error-text {
+  color: red;
+  font-size: 0.8rem;
+}
+
+.input-container {
+  border: 1px solid black;
+  background-color: whitesmoke;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.output-container {
+  border: 1px solid black;
+  background-color: whitesmoke;
+  padding: 10px;
+  //width: 90%;
+  border-radius: 10px;
+}
+
+.indent {
+  padding-left: 20px;
+}
+
+pre {
+  white-space: pre-wrap;
+}
+
+.column-left {
+  float: left;
+  width: 49%;
+}
+.column-right {
+  float: right;
+  width: 49%;
+}
+
+.header {
   text-align: center;
-  margin-bottom: 20px;
+  margin-top: 0px;
 }
 
-form {
+.logo {
+  align-self: center;
+  margin-bottom: 0px;
+}
+
+.button-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 100%;
-}
-
-.input-field {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  margin: 10px 0;
-  width: 100%;
-}
-
-.input-field label {
-  width: 200px;
-  text-align: right;
-  margin-right: 20px;
-}
-
-.input-field input {
-  flex-grow: 1;
-  padding: 5px;
-  border: 1px solid #ccc;
-  border-radius: 3px;
-}
-
-.button {
-  margin-top: 20px;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 3px;
-  background-color: #007bff;
-  color: white;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-.button:hover {
-  background-color: #0062cc;
+  width: 90%;
+  padding-bottom: 50px;
 }
