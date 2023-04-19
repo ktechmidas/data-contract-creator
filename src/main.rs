@@ -43,6 +43,9 @@ struct Property {
     byte_array: Option<bool>,  // For Array data type
     min_items: Option<u32>,    // For Array data type
     max_items: Option<u32>,    // For Array data type
+    min_properties: Option<u32>, // For Object data type
+    max_properties: Option<u32>, // For Object data type
+    additional_properties: Option<bool>, // For Object data type
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -64,7 +67,7 @@ impl Default for IndexProperties {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 enum DataType {
     #[default]
     String,
@@ -109,93 +112,12 @@ enum Msg {
     UpdateArrayPropertyByteArray(usize, usize, bool),
     UpdateArrayPropertyMinItems(usize, usize, u32),
     UpdateArrayPropertyMaxItems(usize, usize, u32),
+    UpdateObjectPropertyMinProperties(usize, usize, u32),
+    UpdateObjectPropertyMaxProperties(usize, usize, u32),
 }
 
 impl Model {
-    fn add_document_type(&mut self) {
-        let mut new_document_type = DocumentType::default();
-        new_document_type.properties.push(Property::default());
-        self.document_types.push(new_document_type);
-    }
-
-    fn remove_document_type(&mut self, index: usize) {
-        self.document_types.remove(index);
-    }
-
-    fn add_property(&mut self, index: usize) {
-        self.document_types[index].properties.push(Default::default());
-    }
-
-    fn add_index(&mut self, index: usize) {
-        self.document_types[index].indices.push(Index {
-            name: String::new(),
-            unique: false,
-            properties: vec![IndexProperties::default()],
-        });
-    }
-
-    fn remove_property(&mut self, doc_index: usize, prop_index: usize) {
-        let name = self.document_types[doc_index].properties[prop_index].name.clone();
-        let required = &mut self.document_types[doc_index].required;
-        if let Some(index) = required.iter().position(|x| x == &name) {
-            required.remove(index);
-        }
-        self.document_types[doc_index].properties.remove(prop_index);
-    }
-
-    fn remove_index(&mut self, doc_index: usize, index_index: usize) {
-        self.document_types[doc_index].indices.remove(index_index);
-    }
-
-    fn add_index_property(&mut self, doc_index: usize, index_index: usize) {
-        self.document_types[doc_index].indices[index_index].properties.push(Default::default());
-    }
-
-    fn update_name(&mut self, index: usize, name: String) {
-        self.document_types[index].name = name;
-    }
-
-    fn update_comment(&mut self, index: usize, comment: String) {
-        self.document_types[index].comment = comment;
-    }
-
-    fn update_property_name(&mut self, doc_index: usize, prop_index: usize, name: String) {
-        self.document_types[doc_index].properties[prop_index].name = name;
-    }
-
-    fn update_index_name(&mut self, doc_index: usize, index_index: usize, name: String) {
-        self.document_types[doc_index].indices[index_index].name = name;
-    }
-
-    fn update_index_property(&mut self, doc_index: usize, index_index: usize, prop_index: usize, prop: String) {
-        self.document_types[doc_index].indices[index_index].properties[prop_index].0 = prop;
-    }
-
-    fn update_property_type(&mut self, doc_index: usize, prop_index: usize, data_type: String) {
-        let data_type = match data_type.as_str() {
-            "String" => DataType::String,
-            "Integer" => DataType::Integer,
-            "Array" => DataType::Array,
-            "Object" => DataType::Object,
-            "Number" => DataType::Number,
-            "Boolean" => DataType::Boolean,
-            _ => unreachable!(),
-        };
-        self.document_types[doc_index].properties[prop_index].data_type = data_type;
-    }
-
-    fn update_index_unique(&mut self, doc_index: usize, index_index: usize, unique: bool) {
-        self.document_types[doc_index].indices[index_index].unique = unique;
-    }
-
-    fn update_index_sorting(&mut self, doc_index: usize, index_index: usize, prop_index: usize, sorting: String) {
-        self.document_types[doc_index].indices[index_index].properties[prop_index].1 = sorting;
-    }
-
-    fn update_property_required(&mut self, doc_index: usize, prop_index: usize, required: bool) {
-        self.document_types[doc_index].properties[prop_index].required = required;
-    }
-
+    
     fn view_document_types(&self, ctx: &yew::Context<Self>) -> Html {
         html! {
             <div>
@@ -287,15 +209,15 @@ impl Model {
                     <td><input type="checkbox" checked={self.document_types[doc_index].properties[prop_index].required} onchange={ctx.link().callback(move |e: Event| Msg::UpdatePropertyRequired(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().checked()))} /></td>
                     <td><button class="button" onclick={ctx.link().callback(move |_| Msg::RemoveProperty(doc_index, prop_index))}>{"Remove"}</button></td>
                 </tr>
-                <p><b>{"Optional parameters:"}</b></p>
+                <p><b>{"Optional property parameters:"}</b></p>
                 <tr>
                     <td colspan="4">
                         <table>
+                            {additional_properties}
                             <tr>
                                 <td><label>{"Description: "}</label></td>
                                 <td><input type="text3" value={self.document_types[doc_index].properties[prop_index].description.clone()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdatePropertyDescription(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} /></td>
                             </tr>
-                            {additional_properties}
                             <tr>
                                 <td><label>{"Comment: "}</label></td><td><input type="text3" value={self.document_types[doc_index].properties[prop_index].comment.clone()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdatePropertyComment(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} /></td>
                                 <p></p>
@@ -354,6 +276,22 @@ impl Model {
                 <tr>
                     <td><label>{"Max items: "}</label></td>
                     <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateArrayPropertyMinItems(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
+                </tr>
+                </>
+            },
+            "Object" => html! {
+                <>
+                <tr>
+                <td colspan="2"><label class="note">{"NOTE: recursive properties must be inserted manually"}</label></td>
+                </tr>
+                <br/>
+                <tr>
+                    <td><label>{"Min properties: "}</label></td>
+                    <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateObjectPropertyMinProperties(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
+                </tr>
+                <tr>
+                    <td><label>{"Max properties: "}</label></td>
+                    <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateObjectPropertyMaxProperties(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
                 </tr>
                 </>
             },
@@ -455,6 +393,18 @@ impl Model {
                 if prop.max_items.as_ref().map(|c| *c).unwrap_or(0) > 0 {
                     prop_obj.insert("maxItems".to_owned(), json!(prop.max_items));
                 }
+                if prop.data_type == DataType::Object {
+                    prop_obj.insert("properties".to_owned(), json!({}));
+                }
+                if prop.min_properties.as_ref().map(|c| *c).unwrap_or(0) > 0 {
+                    prop_obj.insert("minProperties".to_owned(), json!(prop.min_properties));
+                }
+                if prop.max_properties.as_ref().map(|c| *c).unwrap_or(0) > 0 {
+                    prop_obj.insert("maxProperties".to_owned(), json!(prop.max_properties));
+                }
+                if prop.data_type == DataType::Object {
+                    prop_obj.insert("additionalProperties".to_owned(), json!(false));
+                }
                 if prop.comment.as_ref().map(|c| c.len()).unwrap_or(0) > 0 {
                     prop_obj.insert("$comment".to_owned(), json!(prop.comment));
                 }
@@ -533,31 +483,42 @@ impl Component for Model {
     fn update(&mut self, _ctx: &yew::Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::AddDocumentType => {
-                self.add_document_type();
+                let mut new_document_type = DocumentType::default();
+                new_document_type.properties.push(Property::default());
+                self.document_types.push(new_document_type);
                 true
             }
             Msg::AddProperty(index) => {
-                self.add_property(index);
+                self.document_types[index].properties.push(Default::default());
                 true
             }
             Msg::AddIndex(index) => {
-                self.add_index(index);
+                self.document_types[index].indices.push(Index {
+                    name: String::new(),
+                    unique: false,
+                    properties: vec![IndexProperties::default()],
+                });
                 true
             }
             Msg::RemoveDocumentType(index) => {
-                self.remove_document_type(index);
+                self.document_types.remove(index);
                 true
             }
             Msg::RemoveProperty(doc_index, prop_index) => {
-                self.remove_property(doc_index, prop_index);
+                let name = self.document_types[doc_index].properties[prop_index].name.clone();
+                let required = &mut self.document_types[doc_index].required;
+                if let Some(index) = required.iter().position(|x| x == &name) {
+                    required.remove(index);
+                }
+                self.document_types[doc_index].properties.remove(prop_index);
                 true
             }
             Msg::RemoveIndex(doc_index, index_index) => {
-                self.remove_index(doc_index, index_index);
+                self.document_types[doc_index].indices.remove(index_index);
                 true
             }
             Msg::AddIndexProperty(doc_index, index_index) => {
-                self.add_index_property(doc_index, index_index);
+                self.document_types[doc_index].indices[index_index].properties.push(Default::default());
                 true
             }
             Msg::Submit => {
@@ -565,39 +526,48 @@ impl Component for Model {
                 true
             }
             Msg::UpdateName(index, name) => {
-                self.update_name(index, name);
+                self.document_types[index].name = name;
                 true
             }
             Msg::UpdateComment(index, comment) => {
-                self.update_comment(index, comment);
+                self.document_types[index].comment = comment;
                 true
             }
             Msg::UpdatePropertyName(doc_index, prop_index, name) => {
-                self.update_property_name(doc_index, prop_index, name);
+                self.document_types[doc_index].properties[prop_index].name = name;
                 true
             }
             Msg::UpdateIndexName(doc_index, index_index, name) => {
-                self.update_index_name(doc_index, index_index, name);
+                self.document_types[doc_index].indices[index_index].name = name;
                 true
             }
             Msg::UpdateIndexProperty(doc_index, index_index, prop_index, prop) => {
-                self.update_index_property(doc_index, index_index, prop_index, prop);
+                self.document_types[doc_index].indices[index_index].properties[prop_index].0 = prop;
                 true
             }
             Msg::UpdateIndexSorting(doc_index, index_index, prop_index, sorting) => {
-                self.update_index_sorting(doc_index, index_index, prop_index, sorting);
+                self.document_types[doc_index].indices[index_index].properties[prop_index].1 = sorting;
                 true
             }
             Msg::UpdatePropertyType(doc_index, prop_index, data_type) => {
-                self.update_property_type(doc_index, prop_index, data_type);
+                let data_type = match data_type.as_str() {
+                    "String" => DataType::String,
+                    "Integer" => DataType::Integer,
+                    "Array" => DataType::Array,
+                    "Object" => DataType::Object,
+                    "Number" => DataType::Number,
+                    "Boolean" => DataType::Boolean,
+                    _ => unreachable!(),
+                };
+                self.document_types[doc_index].properties[prop_index].data_type = data_type;
                 true
             }
             Msg::UpdateIndexUnique(doc_index, index_index, unique) => {
-                self.update_index_unique(doc_index, index_index, unique);
+                self.document_types[doc_index].indices[index_index].unique = unique;
                 true
             }
             Msg::UpdatePropertyRequired(doc_index, prop_index, required) => {
-                self.update_property_required(doc_index, prop_index, required);
+                self.document_types[doc_index].properties[prop_index].required = required;
                 true
             }
             Msg::UpdatePropertyDescription(doc_index, prop_index, description) => {
@@ -642,6 +612,14 @@ impl Component for Model {
             }
             Msg::UpdateArrayPropertyMaxItems(doc_index, prop_index, max_items) => {
                 self.document_types[doc_index].properties[prop_index].max_items = Some(max_items);
+                true
+            }
+            Msg::UpdateObjectPropertyMinProperties(doc_index, prop_index, min_properties) => {
+                self.document_types[doc_index].properties[prop_index].min_properties = Some(min_properties);
+                true
+            }
+            Msg::UpdateObjectPropertyMaxProperties(doc_index, prop_index, max_properties) => {
+                self.document_types[doc_index].properties[prop_index].max_properties = Some(max_properties);
                 true
             }
         }
