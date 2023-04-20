@@ -1,6 +1,6 @@
 use serde::{Serialize, Deserialize};
 use yew::{html, Component, Html, Event, InputEvent, FocusEvent, TargetCast};
-use serde_json::{json, Map};
+use serde_json::{json, Map, Value};
 use web_sys::HtmlSelectElement;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -46,6 +46,7 @@ struct Property {
     properties: Option<Box<Vec<Property>>>, // For Object data type
     min_properties: Option<u32>, // For Object data type
     max_properties: Option<u32>, // For Object data type
+    rec_required: Option<Vec<String>>, // For Object data type
     additional_properties: Option<bool>, // For Object data type
 }
 
@@ -233,7 +234,7 @@ impl Model {
                     <td><input type="checkbox" checked={self.document_types[doc_index].properties[prop_index].required} onchange={ctx.link().callback(move |e: Event| Msg::UpdatePropertyRequired(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().checked()))} /></td>
                     <td><button class="button" onclick={ctx.link().callback(move |_| Msg::RemoveProperty(doc_index, prop_index))}>{"Remove"}</button></td>
                 </tr>
-                <p><b>{"Optional property parameters:"}</b></p>
+                <p><b>{if selected_data_type != String::from("Object") { "Optional property parameters:" } else {""}}</b></p>
                 <tr>
                     <td colspan="4">
                         <table>
@@ -305,15 +306,21 @@ impl Model {
             },
             "Object" => html! {
                 <>
-                    {for self.document_types[doc_index].properties[prop_index].properties.as_ref().unwrap_or(&Box::new(Vec::new())).iter().enumerate().map(|(i, _)| self.view_recursive_property(doc_index, prop_index, i, ctx))}
-                    <tr>
-                        <td></td>
-                        <td><button class="button" onclick={ctx.link().callback(move |_| Msg::AddRecProperty(doc_index, prop_index))}>{"Add Property"}</button></td>
-                        <td></td>
-                        <td></td>
-                    </tr>
-                    {self.rec_render_additional_properties(&data_type, doc_index, prop_index, 0, ctx)}
-                    <br/>        
+                <tr>
+                    <td class="note" colspan="2">
+                    {"NOTE: Recursive properties beyond 2 layers must be inserted manually"}
+                    </td>
+                </tr>
+                <br/>
+                {for self.document_types[doc_index].properties[prop_index].properties.as_ref().unwrap_or(&Box::new(Vec::new())).iter().enumerate().map(|(i, _)| self.view_recursive_property(doc_index, prop_index, i, ctx))}
+                <tr>
+                    <td></td>
+                    <td><button class="button" onclick={ctx.link().callback(move |_| Msg::AddRecProperty(doc_index, prop_index))}>{"Add Property"}</button></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                {self.rec_render_additional_properties(&data_type, doc_index, prop_index, 0, ctx)}
+                <br/>        
                 <tr>
                     <td><label>{"Min properties: "}</label></td>
                     <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateObjectPropertyMinProperties(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
@@ -504,34 +511,28 @@ impl Model {
             
                 html! {
                     <>
-                    <tr>
-                        <td colspan="2">
-                        {"NOTE: Recursive properties beyond 2 layers must be inserted manually"}
-                        </td>
-                    </tr>
-                    <br/>
-                    <tr>
-                        <td><label>{"Min properties: "}</label></td>
-                        <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| {
-                            let value = e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number();
-                            let value = match value {
-                                v if v.is_finite() => Some(v as u32),
-                                _ => None,
-                            };
-                            Msg::UpdateObjectRecPropertyMinProperties(doc_index, prop_index, recursive_prop_index, value.unwrap_or(0))
-                        })} value={min_props.map(|n| n.to_string()).unwrap_or_default().to_owned()} /></td>
-                    </tr>
-                    <tr>
-                        <td><label>{"Max properties: "}</label></td>
-                        <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| {
-                            let value = e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number();
-                            let value = match value {
-                                v if v.is_finite() => Some(v as u32),
-                                _ => None,
-                            };
-                            Msg::UpdateObjectRecPropertyMaxProperties(doc_index, prop_index, recursive_prop_index, value.unwrap_or(0))
-                        })} value={max_props.map(|n| n.to_string()).unwrap_or_default().to_owned()} /></td>
-                    </tr>
+                    //<tr>
+                    //    <td><label>{"Min properties: "}</label></td>
+                    //    <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| {
+                    //        let value = e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number();
+                    //        let value = match value {
+                    //            v if v.is_finite() => Some(v as u32),
+                    //            _ => None,
+                    //        };
+                    //        Msg::UpdateObjectRecPropertyMinProperties(doc_index, prop_index, recursive_prop_index, value.unwrap_or(0))
+                    //    })} value={min_props.map(|n| n.to_string()).unwrap_or_default().to_owned()} /></td>
+                    //</tr>
+                    //<tr>
+                    //    <td><label>{"Max properties: "}</label></td>
+                    //    <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| {
+                    //        let value = e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number();
+                    //        let value = match value {
+                    //            v if v.is_finite() => Some(v as u32),
+                    //            _ => None,
+                    //        };
+                    //        Msg::UpdateObjectRecPropertyMaxProperties(doc_index, prop_index, recursive_prop_index, value.unwrap_or(0))
+                    //    })} value={max_props.map(|n| n.to_string()).unwrap_or_default().to_owned()} /></td>
+                    //</tr>
                     </>
                 }
             },
@@ -598,10 +599,13 @@ impl Model {
     }
 
     fn generate_json_object(&mut self) -> Vec<String> {
+        println!("generate_json_object: start");
         let mut json_arr = Vec::new();
         for doc_type in &mut self.document_types {
+            println!("generate_json_object: iterating document types");
             let mut props_map = Map::new();
-            for prop in &doc_type.properties {
+            for prop in &mut doc_type.properties {
+                println!("generate_json_object: iterating properties");
                 let mut prop_obj = Map::new();
                 prop_obj.insert("type".to_owned(), json!(match prop.data_type {
                     DataType::String => "string",
@@ -642,8 +646,9 @@ impl Model {
                     prop_obj.insert("maxItems".to_owned(), json!(prop.max_items));
                 }
                 if prop.data_type == DataType::Object {
-                    prop_obj.insert("properties".to_owned(), json!({}));
-                }
+                    let rec_props_map = Self::generate_nested_properties(prop);
+                    prop_obj.insert("properties".to_owned(), json!(rec_props_map));
+                    }
                 if prop.min_properties.as_ref().map(|c| *c).unwrap_or(0) > 0 {
                     prop_obj.insert("minProperties".to_owned(), json!(prop.min_properties));
                 }
@@ -711,9 +716,84 @@ impl Model {
             let formatted_doc_obj = &final_doc_obj.to_string()[1..final_doc_obj.to_string().len()-1];
             json_arr.push(formatted_doc_obj.to_string());
         }
+        println!("generate_json_object: end");
         json_arr
     }    
-}    
+
+    fn generate_nested_properties(prop: &mut Property) -> Map<String, Value> {
+        let mut rec_props_map = Map::new();
+        if let Some(nested_props) = &mut prop.properties {
+            for rec_prop in nested_props.iter_mut() {
+                let mut rec_prop_obj = Map::new();
+                rec_prop_obj.insert("type".to_owned(), json!(match rec_prop.data_type {
+                    DataType::String => "string",
+                    DataType::Integer => "integer",
+                    DataType::Array => "array",
+                    DataType::Object => "object",
+                    DataType::Number => "number",
+                    DataType::Boolean => "bool",
+                }));
+                if rec_prop.description.as_ref().map(|c| c.len()).unwrap_or(0) > 0 {
+                    rec_prop_obj.insert("description".to_owned(), json!(rec_prop.description));
+                }
+                if rec_prop.min_length.as_ref().map(|c| *c).unwrap_or(0) > 0 {
+                    rec_prop_obj.insert("minLength".to_owned(), json!(rec_prop.min_length));
+                }
+                if rec_prop.max_length.as_ref().map(|c| *c).unwrap_or(0) > 0 {
+                    rec_prop_obj.insert("maxLength".to_owned(), json!(rec_prop.max_length));
+                }
+                if rec_prop.pattern.as_ref().map(|c| c.len()).unwrap_or(0) > 0 {
+                    rec_prop_obj.insert("pattern".to_owned(), json!(rec_prop.pattern));
+                }
+                if rec_prop.format.as_ref().map(|c| c.len()).unwrap_or(0) > 0 {
+                    rec_prop_obj.insert("format".to_owned(), json!(rec_prop.format));
+                }
+                if rec_prop.minimum.as_ref().map(|c| *c).unwrap_or(0) > 0 {
+                    rec_prop_obj.insert("minimum".to_owned(), json!(rec_prop.minimum));
+                }
+                if rec_prop.maximum.as_ref().map(|c| *c).unwrap_or(0) > 0 {
+                    rec_prop_obj.insert("maximum".to_owned(), json!(rec_prop.maximum));
+                }
+                if let Some(byte_array) = rec_prop.byte_array {
+                    rec_prop_obj.insert("byteArray".to_owned(), json!(byte_array));
+                }
+                if rec_prop.min_items.as_ref().map(|c| *c).unwrap_or(0) > 0 {
+                    rec_prop_obj.insert("minItems".to_owned(), json!(rec_prop.min_items));
+                }
+                if rec_prop.max_items.as_ref().map(|c| *c).unwrap_or(0) > 0 {
+                    rec_prop_obj.insert("maxItems".to_owned(), json!(rec_prop.max_items));
+                }
+                if rec_prop.data_type == DataType::Object {
+                    rec_prop_obj.insert("properties".to_owned(), json!({}));
+                }
+                if rec_prop.min_properties.as_ref().map(|c| *c).unwrap_or(0) > 0 {
+                    rec_prop_obj.insert("minProperties".to_owned(), json!(rec_prop.min_properties));
+                }
+                if rec_prop.max_properties.as_ref().map(|c| *c).unwrap_or(0) > 0 {
+                    rec_prop_obj.insert("maxProperties".to_owned(), json!(rec_prop.max_properties));
+                }
+                if rec_prop.data_type == DataType::Object {
+                    rec_prop_obj.insert("additionalProperties".to_owned(), json!(false));
+                }
+                if rec_prop.comment.as_ref().map(|c| c.len()).unwrap_or(0) > 0 {
+                    rec_prop_obj.insert("$comment".to_owned(), json!(rec_prop.comment));
+                }
+                rec_props_map.insert(rec_prop.name.clone(), json!(rec_prop_obj));
+                if rec_prop.required {
+                    if !prop.rec_required.as_ref().unwrap().contains(&rec_prop.name) {
+                        prop.rec_required.as_mut().unwrap().push(rec_prop.name.clone());
+                    }
+                } else {
+                    if prop.rec_required.as_ref().map_or(false, |req| req.contains(&rec_prop.name)) {
+                        prop.rec_required.as_mut().map(|v| v.retain(|x| x != &rec_prop.name));
+                    }
+                }
+                rec_props_map.insert(rec_prop.name.clone(), json!(rec_prop_obj));
+            }
+        }
+        rec_props_map
+    }
+}
 
 impl Component for Model {
     type Message = Msg;
@@ -880,6 +960,7 @@ impl Component for Model {
                     name: String::new(),
                     data_type: DataType::String,
                     required: false,
+                    rec_required: Some(Vec::new()),
                     description: None,
                     comment: None,
                     properties: None,
@@ -908,11 +989,6 @@ impl Component for Model {
                 true
             }  
             Msg::RemoveRecProperty(doc_index, prop_index, rec_prop_index) => {
-                //let name = self.document_types[doc_index].properties[prop_index].properties.unwrap()[rec_prop_index].name.clone();
-                //let required = &mut self.document_types[doc_index].properties[prop_index].properties.unwrap().required;
-                //if let Some(index) = required.iter().position(|x| x == &name) {
-                //    required.remove(index);
-                //}
                 if let Some(property_vec) = self.document_types[doc_index].properties[prop_index].properties.as_mut() {
                     property_vec.remove(rec_prop_index);
                 }
