@@ -572,6 +572,7 @@ impl Model {
                     </table>
                 </td>
             </tr>
+            <p></p>
             <tr>
                 <td colspan="2"><button class="button" onclick={ctx.link().callback(move |_| Msg::AddIndexProperty(doc_index, index_index))}>{"Add index property"}</button></td>
             </tr>
@@ -1122,10 +1123,14 @@ impl Component for Model {
 
                 <div class="button-container">
                     // add input fields for another document type and add one to Self::document_types
-                    <><button class="button2" onclick={ctx.link().callback(|_| Msg::AddDocumentType)}>{"Add document type"}</button></>
+                    <button class="button2" onclick={ctx.link().callback(|_| Msg::AddDocumentType)}>{"Add document type"}</button><br/>
 
                     // look at document_types and generate json object from it
-                    <p><button class="button button-primary" onclick={ctx.link().callback(|_| Msg::Submit)}>{"Submit"}</button></p>
+                    <button class="button button-primary" onclick={ctx.link().callback(|_| Msg::Submit)}>{"Submit"}</button>
+                </div>
+                <div class="footnotes">
+                    <h3>{"Notes"}</h3>
+                    <p>{"For indexes on inner properties: use the format 'outerProperty.innerProperty'."}</p>
                 </div>
             </div>
             <div class="column-right">
