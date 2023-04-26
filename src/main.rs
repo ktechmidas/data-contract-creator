@@ -259,11 +259,11 @@ impl Model {
             "String" => html! {
                 <>
                 <tr>
-                    <td><label>{"Min length (0 is null):"}</label></td>
+                    <td><label>{"Min length: "}</label></td>
                     <td><input type="number" value={property.min_length.unwrap_or(0).to_string()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateStringPropertyMinLength(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
                 </tr>
                 <tr>
-                    <td><label>{"Max length (0 is null):"}</label></td>
+                    <td><label>{"Max length: "}</label></td>
                     <td><input type="number" value={property.max_length.unwrap_or(0).to_string()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateStringPropertyMaxLength(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
                 </tr>
                 <tr>
@@ -306,12 +306,6 @@ impl Model {
             },
             "Object" => html! {
                 <>
-                <tr>
-                    <td class="note" colspan="2">
-                    {"Note: Recursive properties beyond the second layer must be inserted manually"}
-                    </td>
-                </tr>
-                <br/>
                 <tr>
                     <td colspan="4">
                     {for self.document_types[doc_index].properties[prop_index].properties.as_ref().unwrap_or(&Box::new(Vec::new())).iter().enumerate().map(|(i, _)| self.view_recursive_property(doc_index, prop_index, i, ctx))}
