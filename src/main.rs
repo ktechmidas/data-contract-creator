@@ -254,24 +254,25 @@ impl Model {
     }
 
     fn render_additional_properties(&self, data_type: &String, doc_index: usize, prop_index: usize, ctx: &yew::Context<Self>) -> Html {
+        let property = &self.document_types[doc_index].properties[prop_index];
         match data_type.as_str() {
             "String" => html! {
                 <>
                 <tr>
-                    <td><label>{"Min length: "}</label></td>
-                    <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateStringPropertyMinLength(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
+                    <td><label>{"Min length (0 is null):"}</label></td>
+                    <td><input type="number" value={property.min_length.unwrap_or(0).to_string()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateStringPropertyMinLength(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
                 </tr>
                 <tr>
-                    <td><label>{"Max length: "}</label></td>
-                    <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateStringPropertyMaxLength(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
+                    <td><label>{"Max length (0 is null):"}</label></td>
+                    <td><input type="number" value={property.max_length.unwrap_or(0).to_string()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateStringPropertyMaxLength(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
                 </tr>
                 <tr>
                     <td><label>{"RE2 pattern: "}</label></td>
-                    <td><input type="text3" oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateStringPropertyPattern(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} /></td>
+                    <td><input type="text3" value={property.pattern.clone().unwrap_or_default()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateStringPropertyPattern(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} /></td>
                 </tr>
                 <tr>
                     <td><label>{"Format: "}</label></td>
-                    <td><input type="text3" oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateStringPropertyFormat(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} /></td>
+                    <td><input type="text3" value={property.format.clone().unwrap_or_default()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateStringPropertyFormat(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} /></td>
                 </tr>
                 </>
             },
@@ -279,11 +280,11 @@ impl Model {
                 <>
                 <tr>
                     <td><label>{"Minimum: "}</label></td>
-                    <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateIntegerPropertyMinimum(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as i32))} /></td>
+                    <td><input type="number" value={property.minimum.unwrap_or(0).to_string()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateIntegerPropertyMinimum(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as i32))} /></td>
                 </tr>
                 <tr>
                     <td><label>{"Maximum: "}</label></td>
-                    <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateIntegerPropertyMaximum(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as i32))} /></td>
+                    <td><input type="number" value={property.maximum.unwrap_or(0).to_string()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateIntegerPropertyMaximum(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as i32))} /></td>
                 </tr>
                 </>
             },
@@ -291,7 +292,7 @@ impl Model {
                 <>
                 <tr>
                     <td><label>{"Byte array: "}</label></td>
-                    <td><input type="checkbox" checked={self.document_types[doc_index].properties[prop_index].byte_array.unwrap_or(false)} onchange={ctx.link().callback(move |e: Event| Msg::UpdateArrayPropertyByteArray(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().checked()))} /></td>
+                    <td><input type="checkbox" checked={property.byte_array.unwrap_or(false)} onchange={ctx.link().callback(move |e: Event| Msg::UpdateArrayPropertyByteArray(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().checked()))} /></td>
                 </tr>
                 <tr>
                     <td><label>{"Min items: "}</label></td>
@@ -323,11 +324,11 @@ impl Model {
                 <p><b>{"Optional property parameters:"}</b></p>
                 <tr>
                     <td><label>{"Min properties: "}</label></td>
-                    <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateObjectPropertyMinProperties(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
+                    <td><input type="number" value={property.min_properties.unwrap_or(0).to_string()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateObjectPropertyMinProperties(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
                 </tr>
                 <tr>
                     <td><label>{"Max properties: "}</label></td>
-                    <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateObjectPropertyMaxProperties(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
+                    <td><input type="number" value={property.max_properties.unwrap_or(0).to_string()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateObjectPropertyMaxProperties(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
                 </tr>
                 </>
             },
