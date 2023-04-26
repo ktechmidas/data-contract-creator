@@ -50,6 +50,7 @@ input[type="text3"] {
   border: 2px solid $light-gray;
   border-radius: 4px;
   padding: 0.5rem;
+  max-width: 100%;
   width: 280px;
   &:focus {
     outline: none;
