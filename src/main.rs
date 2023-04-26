@@ -1,7 +1,7 @@
 use serde::{Serialize, Deserialize};
 use yew::{html, Component, Html, Event, InputEvent, FocusEvent, TargetCast};
 use serde_json::{json, Map, Value};
-use web_sys::HtmlSelectElement;
+use web_sys::{HtmlSelectElement, console};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(non_snake_case)]
@@ -237,17 +237,16 @@ impl Model {
                 <p><b>{if selected_data_type != String::from("Object") { "Optional property parameters:" } else {""}}</b></p>
                 <tr>
                     <td colspan="4">
-                        <table>
-                            {additional_properties}
-                            <tr>
-                                <td><label>{"Description: "}</label></td>
-                                <td><input type="text3" value={self.document_types[doc_index].properties[prop_index].description.clone()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdatePropertyDescription(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} /></td>
-                            </tr>
-                            <tr>
-                                <td><label>{"Comment: "}</label></td><td><input type="text3" value={self.document_types[doc_index].properties[prop_index].comment.clone()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdatePropertyComment(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} /></td>
-                                <p></p>
-                            </tr>
-                        </table>
+                        {additional_properties}
+                        <tr>
+                            <td><label>{"Description: "}</label></td>
+                            <td><input type="text3" value={self.document_types[doc_index].properties[prop_index].description.clone()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdatePropertyDescription(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} /></td>
+                        </tr>
+                        <tr>
+                            <td><label>{"Comment: "}</label></td>
+                            <td><input type="text3" value={self.document_types[doc_index].properties[prop_index].comment.clone()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdatePropertyComment(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} /></td>
+                        </tr>
+                        <p></p>
                     </td>
                 </tr>
             </>
@@ -308,19 +307,20 @@ impl Model {
                 <>
                 <tr>
                     <td class="note" colspan="2">
-                    {"NOTE: Recursive properties beyond 2 layers must be inserted manually"}
+                    {"Note: Recursive properties beyond the second layer must be inserted manually"}
                     </td>
                 </tr>
                 <br/>
-                {for self.document_types[doc_index].properties[prop_index].properties.as_ref().unwrap_or(&Box::new(Vec::new())).iter().enumerate().map(|(i, _)| self.view_recursive_property(doc_index, prop_index, i, ctx))}
                 <tr>
-                    <td></td>
-                    <td><button class="button" onclick={ctx.link().callback(move |_| Msg::AddRecProperty(doc_index, prop_index))}>{"Add Property"}</button></td>
-                    <td></td>
-                    <td></td>
+                    <td colspan="4">
+                    {for self.document_types[doc_index].properties[prop_index].properties.as_ref().unwrap_or(&Box::new(Vec::new())).iter().enumerate().map(|(i, _)| self.view_recursive_property(doc_index, prop_index, i, ctx))}
+                    </td>
+                </tr>
+                <tr>
+                    <td><button class="button" onclick={ctx.link().callback(move |_| Msg::AddRecProperty(doc_index, prop_index))}>{"Add Inner Property"}</button></td>
                 </tr>
                 {self.rec_render_additional_properties(&data_type, doc_index, prop_index, 0, ctx)}
-                <br/>        
+                <p><b>{"Optional property parameters:"}</b></p>
                 <tr>
                     <td><label>{"Min properties: "}</label></td>
                     <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateObjectPropertyMinProperties(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
@@ -368,10 +368,12 @@ impl Model {
                     <th>{"Required"}</th>
                 </tr>
                 <tr>
-                    <td><input type="text3" placeholder={format!("Property {} name", recursive_prop_index+1)} value={match &self.document_types[doc_index].properties[prop_index].properties {
-                        Some(properties) => properties.get(recursive_prop_index).map(|property| property.name.clone()).unwrap_or_default(),
-                        None => String::new(),
-                    }} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateRecPropertyName(doc_index, prop_index, recursive_prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} /></td>
+                    <td>
+                        <input type="text3" placeholder={format!("Inner property {} name", recursive_prop_index+1)} value={match &self.document_types[doc_index].properties[prop_index].properties {
+                            Some(properties) => properties.get(recursive_prop_index).map(|property| property.name.clone()).unwrap_or_default(),
+                            None => String::new(),
+                        }} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateRecPropertyName(doc_index, prop_index, recursive_prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} />
+                    </td>
                     <td>
                         <select value={selected_data_type.clone()} onchange={ctx.link().callback(move |e: Event| Msg::UpdateRecPropertyType(doc_index, prop_index, recursive_prop_index, match e.target_dyn_into::<HtmlSelectElement>().unwrap().value().as_str() {
                             "String" => String::from("String"),
@@ -387,16 +389,21 @@ impl Model {
                             })}
                         </select>
                     </td>
-                    <td><input type="checkbox" checked={match &self.document_types[doc_index].properties[prop_index].properties {
-                        Some(properties) => properties.get(recursive_prop_index).map(|property| property.required).unwrap_or(false),
-                        None => false,
-                    }} onchange={ctx.link().callback(move |e: Event| Msg::UpdateRecPropertyRequired(doc_index, prop_index, recursive_prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().checked()))} /></td>
-                    <td><button class="button" onclick={ctx.link().callback(move |_| Msg::RemoveRecProperty(doc_index, prop_index, recursive_prop_index))}>{"Remove"}</button></td>
+                    <td>
+                        <input type="checkbox" checked={match &self.document_types[doc_index].properties[prop_index].properties {
+                            Some(properties) => properties.get(recursive_prop_index).map(|property| property.required).unwrap_or(false),
+                            None => false,
+                        }} onchange={ctx.link().callback(move |e: Event| Msg::UpdateRecPropertyRequired(doc_index, prop_index, recursive_prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().checked()))} />
+                    </td>
+                    <td>
+                        <button class="button" onclick={ctx.link().callback(move |_| Msg::RemoveRecProperty(doc_index, prop_index, recursive_prop_index))}>{"Remove"}</button>
+                    </td>
                 </tr>
-                <p><b>{"Optional property parameters:"}</b></p>    
+                <p><b>{"Optional property parameters:"}</b></p>
                 <tr>
                     <td colspan="4">
                         <table>
+                            {self.rec_render_additional_properties(&selected_data_type, doc_index, prop_index, recursive_prop_index, ctx)}
                             <tr>
                                 <td><label>{"Description: "}</label></td>
                                 <td><input type="text3" value={if let Some(properties) = &self.document_types.get(doc_index).and_then(|doc| doc.properties.get(prop_index).and_then(|prop| prop.properties.clone())) {
@@ -411,12 +418,11 @@ impl Model {
                                 } else {
                                     "".to_string()
                                 }} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateRecPropertyComment(doc_index, prop_index, recursive_prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} /></td>
-                                <p></p>
                             </tr>
+                            <p></p>
                         </table>
                     </td>
                 </tr>
-            {self.rec_render_additional_properties(&selected_data_type, doc_index, prop_index, recursive_prop_index, ctx)}
             </>
         }
     }
@@ -655,6 +661,9 @@ impl Model {
                 if prop.max_properties.as_ref().map(|c| *c).unwrap_or(0) > 0 {
                     prop_obj.insert("maxProperties".to_owned(), json!(prop.max_properties));
                 }
+                if prop.rec_required.as_ref().map(|c| c.len()).unwrap_or_default() > 0 {
+                    prop_obj.insert("required".to_owned(), json!(prop.rec_required));
+                }
                 if prop.data_type == DataType::Object {
                     prop_obj.insert("additionalProperties".to_owned(), json!(false));
                 }
@@ -780,8 +789,9 @@ impl Model {
                 }
                 rec_props_map.insert(rec_prop.name.clone(), json!(rec_prop_obj));
                 if rec_prop.required {
-                    if !prop.rec_required.as_ref().unwrap().contains(&rec_prop.name) {
-                        prop.rec_required.as_mut().unwrap().push(rec_prop.name.clone());
+                    if !prop.rec_required.as_ref().cloned().unwrap_or_default().contains(&rec_prop.name) {
+                        prop.rec_required.get_or_insert_with(Vec::new).push(rec_prop.name.clone());
+                        console::log_1(&format!("rec_prop.name inserted into prop.rec_required: {:?}", prop.rec_required).into());
                     }
                 } else {
                     if prop.rec_required.as_ref().map_or(false, |req| req.contains(&rec_prop.name)) {
