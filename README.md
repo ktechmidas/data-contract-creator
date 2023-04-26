@@ -5,18 +5,18 @@ This is a simple web app written in Rust using the [Yew](https://yew.rs/) framew
 ## Features
 
 - Dynamically generate and modify data contract JSON schemas using a web interface
-- Add/remove object properties, array items, and object indices
+- Add/remove document types, properties, and indices
 - Set data types, validation constraints, and descriptions for properties and indices
 - View the generated data contract JSON schema in real-time
 
 ## Setup
 
-If you've never used Yew:
+If you've never used Yew, first:
 
 1. Install WebAssembly target: `rustup target add wasm32-unknown-unknown`
 2. Install Trunk: `cargo install --locked trunk`
 
-Else:
+Otherwise:
 
 1. Clone the repository: `git clone https://github.com/pauldelucia/data-contract-creator.git`
 2. Change into the project directory: `cd data-contract-creator`
@@ -25,6 +25,8 @@ Else:
 ## Usage
 
 ### Adding a Document Type
+
+On startup, there will already be one document type loaded. If you'd like to add another:
 
 1. Click the "Add document type" button
 2. Enter a name for the document type
