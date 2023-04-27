@@ -856,11 +856,9 @@ impl Component for Model {
                 let mut new_document_type = DocumentType::default();
                 new_document_type.properties.push(Property::default());
                 self.document_types.push(new_document_type);
-                true
             }
             Msg::AddProperty(index) => {
                 self.document_types[index].properties.push(Default::default());
-                true
             }
             Msg::AddIndex(index) => {
                 self.document_types[index].indices.push(Index {
@@ -868,11 +866,9 @@ impl Component for Model {
                     unique: false,
                     properties: vec![IndexProperties::default()],
                 });
-                true
             }
             Msg::RemoveDocumentType(index) => {
                 self.document_types.remove(index);
-                true
             }
             Msg::RemoveProperty(doc_index, prop_index) => {
                 let name = self.document_types[doc_index].properties[prop_index].name.clone();
@@ -881,43 +877,33 @@ impl Component for Model {
                     required.remove(index);
                 }
                 self.document_types[doc_index].properties.remove(prop_index);
-                true
             }
             Msg::RemoveIndex(doc_index, index_index) => {
                 self.document_types[doc_index].indices.remove(index_index);
-                true
             }
             Msg::AddIndexProperty(doc_index, index_index) => {
                 self.document_types[doc_index].indices[index_index].properties.push(Default::default());
-                true
             }
             Msg::Submit => {
                 self.json_object = Some(self.generate_json_object()).unwrap();
-                true
             }
             Msg::UpdateName(index, name) => {
                 self.document_types[index].name = name;
-                true
             }
             Msg::UpdateComment(index, comment) => {
                 self.document_types[index].comment = comment;
-                true
             }
             Msg::UpdatePropertyName(doc_index, prop_index, name) => {
                 self.document_types[doc_index].properties[prop_index].name = name;
-                true
             }
             Msg::UpdateIndexName(doc_index, index_index, name) => {
                 self.document_types[doc_index].indices[index_index].name = name;
-                true
             }
             Msg::UpdateIndexProperty(doc_index, index_index, prop_index, prop) => {
                 self.document_types[doc_index].indices[index_index].properties[prop_index].0 = prop;
-                true
             }
             Msg::UpdateIndexSorting(doc_index, index_index, prop_index, sorting) => {
                 self.document_types[doc_index].indices[index_index].properties[prop_index].1 = sorting;
-                true
             }
             Msg::UpdatePropertyType(doc_index, prop_index, new_property) => {
                 let prop = &mut self.document_types[doc_index].properties[prop_index];
@@ -933,69 +919,53 @@ impl Component for Model {
                 prop.max_items = new_property.max_items;
                 prop.min_properties = new_property.min_properties;
                 prop.max_properties = new_property.max_properties;
-                true
             }
             Msg::UpdateIndexUnique(doc_index, index_index, unique) => {
                 self.document_types[doc_index].indices[index_index].unique = unique;
-                true
             }
             Msg::UpdatePropertyRequired(doc_index, prop_index, required) => {
                 self.document_types[doc_index].properties[prop_index].required = required;
-                true
             }
             Msg::UpdatePropertyDescription(doc_index, prop_index, description) => {
                 self.document_types[doc_index].properties[prop_index].description = Some(description);
-                true
             }
             Msg::UpdatePropertyComment(doc_index, prop_index, comment) => {
                 self.document_types[doc_index].properties[prop_index].comment = Some(comment);
-                true
             }
 
             // Optional property parameters
             Msg::UpdateStringPropertyMinLength(doc_index, prop_index, min_length) => {
                 self.document_types[doc_index].properties[prop_index].min_length = Some(min_length);
-                true
             }
             Msg::UpdateStringPropertyMaxLength(doc_index, prop_index, max_length) => {
                 self.document_types[doc_index].properties[prop_index].max_length = Some(max_length);
-                true
             }
             Msg::UpdateStringPropertyPattern(doc_index, prop_index, pattern) => {
                 self.document_types[doc_index].properties[prop_index].pattern = Some(pattern);
-                true
             }
             Msg::UpdateStringPropertyFormat(doc_index, prop_index, format) => {
                 self.document_types[doc_index].properties[prop_index].format = Some(format);
-                true
             }
             Msg::UpdateIntegerPropertyMinimum(doc_index, prop_index, minimum) => {
                 self.document_types[doc_index].properties[prop_index].minimum = Some(minimum);
-                true
             }
             Msg::UpdateIntegerPropertyMaximum(doc_index, prop_index, maximum) => {
                 self.document_types[doc_index].properties[prop_index].maximum = Some(maximum);
-                true
             }
             Msg::UpdateArrayPropertyByteArray(doc_index, prop_index, byte_array) => {
                 self.document_types[doc_index].properties[prop_index].byte_array = Some(byte_array);
-                true
             }
             Msg::UpdateArrayPropertyMinItems(doc_index, prop_index, min_items) => {
                 self.document_types[doc_index].properties[prop_index].min_items = Some(min_items);
-                true
             }
             Msg::UpdateArrayPropertyMaxItems(doc_index, prop_index, max_items) => {
                 self.document_types[doc_index].properties[prop_index].max_items = Some(max_items);
-                true
             }
             Msg::UpdateObjectPropertyMinProperties(doc_index, prop_index, min_properties) => {
                 self.document_types[doc_index].properties[prop_index].min_properties = Some(min_properties);
-                true
             }
             Msg::UpdateObjectPropertyMaxProperties(doc_index, prop_index, max_properties) => {
                 self.document_types[doc_index].properties[prop_index].max_properties = Some(max_properties);
-                true
             }
 
             // Recursive properties
@@ -1030,19 +1000,16 @@ impl Component for Model {
                         document_type.properties[prop_index].properties = Some(Box::new(vec![property]));
                     }
                 }
-                true
             }  
             Msg::RemoveRecProperty(doc_index, prop_index, rec_prop_index) => {
                 if let Some(property_vec) = self.document_types[doc_index].properties[prop_index].properties.as_mut() {
                     property_vec.remove(rec_prop_index);
                 }
-                true
             }
             Msg::UpdateRecPropertyName(doc_index, prop_index, rec_prop_index, name) => {
                 if let Some(property_vec) = self.document_types[doc_index].properties[prop_index].properties.as_mut() {
                     property_vec[rec_prop_index].name = name;
                 }
-                true
             }
             Msg::UpdateRecPropertyType(doc_index, prop_index, rec_prop_index, data_type) => {
                 let data_type = match data_type.as_str() {
@@ -1057,93 +1024,79 @@ impl Component for Model {
                 if let Some(property_vec) = self.document_types[doc_index].properties[prop_index].properties.as_mut() {
                     property_vec[rec_prop_index].data_type = data_type;
                 }
-                true
             }
             Msg::UpdateRecPropertyRequired(doc_index, prop_index, rec_prop_index, required) => {
                 if let Some(property_vec) = self.document_types[doc_index].properties[prop_index].properties.as_mut() {
                     property_vec[rec_prop_index].required = required;
                 }
-                true
             }
             Msg::UpdateRecPropertyDescription(doc_index, prop_index, rec_prop_index, description) => {
                 if let Some(property_vec) = self.document_types[doc_index].properties[prop_index].properties.as_mut() {
                     property_vec[rec_prop_index].description = Some(description);
                 }
-                true
             }
             Msg::UpdateRecPropertyComment(doc_index, prop_index, rec_prop_index, comment) => {
                 if let Some(property_vec) = self.document_types[doc_index].properties[prop_index].properties.as_mut() {
                     property_vec[rec_prop_index].comment = Some(comment);
                 }
-                true
             }
             Msg::UpdateStringRecPropertyMinLength(doc_index, prop_index, rec_prop_index, min_length) => {
                 if let Some(property_vec) = self.document_types[doc_index].properties[prop_index].properties.as_mut() {
                     property_vec[rec_prop_index].min_length = Some(min_length);
                 }
-                true
             }
             Msg::UpdateStringRecPropertyMaxLength(doc_index, prop_index, rec_prop_index, max_length) => {
                 if let Some(property_vec) = self.document_types[doc_index].properties[prop_index].properties.as_mut() {
                     property_vec[rec_prop_index].max_length = Some(max_length);
                 }
-                true
             }
             Msg::UpdateStringRecPropertyPattern(doc_index, prop_index, rec_prop_index, pattern) => {
                 if let Some(property_vec) = self.document_types[doc_index].properties[prop_index].properties.as_mut() {
                     property_vec[rec_prop_index].pattern = Some(pattern);
                 }
-                true
             }
             Msg::UpdateStringRecPropertyFormat(doc_index, prop_index, rec_prop_index, format) => {
                 if let Some(property_vec) = self.document_types[doc_index].properties[prop_index].properties.as_mut() {
                     property_vec[rec_prop_index].format = Some(format);
                 }
-                true
             }
             Msg::UpdateIntegerRecPropertyMaximum(doc_index, prop_index, rec_prop_index, maximum) => {
                 if let Some(property_vec) = self.document_types[doc_index].properties[prop_index].properties.as_mut() {
                     property_vec[rec_prop_index].maximum = Some(maximum);
                 }
-                true
             }
             Msg::UpdateIntegerRecPropertyMinimum(doc_index, prop_index, rec_prop_index, minimum) => {
                 if let Some(property_vec) = self.document_types[doc_index].properties[prop_index].properties.as_mut() {
                     property_vec[rec_prop_index].minimum = Some(minimum);
                 }
-                true
             }
             Msg::UpdateArrayRecPropertyByteArray(doc_index, prop_index, rec_prop_index, byte_array) => {
                 if let Some(property_vec) = self.document_types[doc_index].properties[prop_index].properties.as_mut() {
                     property_vec[rec_prop_index].byte_array = Some(byte_array);
                 }
-                true
             }
             Msg::UpdateArrayRecPropertyMinItems(doc_index, prop_index, rec_prop_index, min_items) => {
                 if let Some(property_vec) = self.document_types[doc_index].properties[prop_index].properties.as_mut() {
                     property_vec[rec_prop_index].min_items = Some(min_items);
                 }
-                true
             }
             Msg::UpdateArrayRecPropertyMaxItems(doc_index, prop_index, rec_prop_index, max_items) => {
                 if let Some(property_vec) = self.document_types[doc_index].properties[prop_index].properties.as_mut() {
                     property_vec[rec_prop_index].max_items = Some(max_items);
                 }
-                true
             }
             Msg::UpdateObjectRecPropertyMinProperties(doc_index, prop_index, rec_prop_index, min_props) => {
                 if let Some(property_vec) = self.document_types[doc_index].properties[prop_index].properties.as_mut() {
                     property_vec[rec_prop_index].min_properties = Some(min_props);
                 }
-                true
             }
             Msg::UpdateObjectRecPropertyMaxProperties(doc_index, prop_index, rec_prop_index, max_props) => {
                 if let Some(property_vec) = self.document_types[doc_index].properties[prop_index].properties.as_mut() {
                     property_vec[rec_prop_index].max_properties = Some(max_props);
                 }
-                true
             }
         }
+        true
     }
 
     fn view(&self, ctx: &yew::Context<Self>) -> Html {
@@ -1172,7 +1125,18 @@ impl Component for Model {
                 </div>
                 <div class="footnotes">
                     <h3>{"Notes"}</h3>
-                    <p>{"For indexes on inner properties: use the format 'outerProperty.innerProperty'."}</p>
+                    <p>{"- For indexes on inner properties: use the format 'outerProperty.innerProperty'."}</p>
+                    <>{"- Some built-in document fields can be used as properties, such as:"}</>
+                    <ul>
+                        <li>{"$protocolVersion"}</li>
+                        <li>{"$id"}</li>
+                        <li>{"$type"}</li>
+                        <li>{"$revision"}</li>
+                        <li>{"$dataContractId"}</li>
+                        <li>{"$ownerId"}</li>
+                        <li>{"$createdAt"}</li>
+                        <li>{"$updatedAt"}</li>
+                    </ul>
                 </div>
             </div>
             <div class="column-right">
