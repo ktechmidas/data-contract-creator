@@ -1,7 +1,7 @@
 use serde::{Serialize, Deserialize};
 use yew::{html, Component, Html, Event, InputEvent, FocusEvent, TargetCast};
 use serde_json::{json, Map, Value};
-use web_sys::{HtmlSelectElement, console};
+use web_sys::{HtmlSelectElement};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(non_snake_case)]
@@ -99,7 +99,7 @@ enum Msg {
     UpdateComment(usize, String),
     UpdatePropertyName(usize, usize, String),
     UpdateIndexName(usize, usize, String),
-    UpdatePropertyType(usize, usize, String),
+    UpdatePropertyType(usize, usize, Property),
     UpdateIndexUnique(usize, usize, bool),
     UpdateIndexSorting(usize, usize, usize, String),
     UpdatePropertyRequired(usize, usize, bool),
@@ -139,6 +139,47 @@ enum Msg {
     UpdateArrayRecPropertyMaxItems(usize, usize, usize, u32),
     UpdateObjectRecPropertyMaxProperties(usize, usize, usize, u32),
     UpdateObjectRecPropertyMinProperties(usize, usize, usize, u32),
+}
+
+fn default_additional_properties(data_type: &str) -> Property {
+    match data_type {
+        "String" => Property {
+            data_type: DataType::String,
+            min_length: None,
+            max_length: None,
+            pattern: None,
+            format: None,
+            ..Default::default()
+        },
+        "Integer" => Property {
+            data_type: DataType::Integer,
+            minimum: None,
+            maximum: None,
+            ..Default::default()
+        },
+        "Array" => Property {
+            data_type: DataType::Array,
+            byte_array: None,
+            min_items: None,
+            max_items: None,
+            ..Default::default()
+        },
+        "Object" => Property {
+            data_type: DataType::Object,
+            min_properties: None,
+            max_properties: None,
+            ..Default::default()
+        },
+        "Number" => Property {
+            data_type: DataType::Number,
+            ..Default::default()
+        },
+        "Boolean" => Property {
+            data_type: DataType::Boolean,
+            ..Default::default()
+        },
+        _ => panic!("Invalid data type selected"),
+    }
 }
 
 impl Model {
@@ -217,15 +258,11 @@ impl Model {
                 <tr>
                     <td><input type="text3" placeholder={format!("Property {} name", prop_index+1)} value={self.document_types[doc_index].properties[prop_index].name.clone()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdatePropertyName(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} /></td>
                     <td>
-                        <select value={selected_data_type.clone()} onchange={ctx.link().callback(move |e: Event| Msg::UpdatePropertyType(doc_index, prop_index, match e.target_dyn_into::<HtmlSelectElement>().unwrap().value().as_str() {
-                            "String" => String::from("String"),
-                            "Integer" => String::from("Integer"),
-                            "Array" => String::from("Array"),
-                            "Object" => String::from("Object"),
-                            "Number" => String::from("Number"),
-                            "Boolean" => String::from("Boolean"),
-                            _ => panic!("Invalid data type selected"),
-                        }))}>
+                        <select value={selected_data_type.clone()} onchange={ctx.link().callback(move |e: Event| {
+                            let selected_data_type = e.target_dyn_into::<HtmlSelectElement>().unwrap().value();
+                            let new_property = default_additional_properties(selected_data_type.as_str());
+                            Msg::UpdatePropertyType(doc_index, prop_index, new_property)
+                        })}>
                             {for data_type_options.iter().map(|option| html! {
                                 <option value={String::from(*option)} selected={&String::from(*option)==&selected_data_type}>{String::from(*option)}</option>
                             })}
@@ -260,11 +297,11 @@ impl Model {
                 <>
                 <tr>
                     <td><label>{"Min length: "}</label></td>
-                    <td><input type="number" value={property.min_length.unwrap_or(0).to_string()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateStringPropertyMinLength(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
+                    <td><input type="number" value={property.min_length.map(|n| n.to_string()).unwrap_or_else(|| "".to_owned())} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateStringPropertyMinLength(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
                 </tr>
                 <tr>
                     <td><label>{"Max length: "}</label></td>
-                    <td><input type="number" value={property.max_length.unwrap_or(0).to_string()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateStringPropertyMaxLength(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
+                    <td><input type="number" value={property.max_length.map(|n| n.to_string()).unwrap_or_else(|| "".to_owned())} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateStringPropertyMaxLength(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
                 </tr>
                 <tr>
                     <td><label>{"RE2 pattern: "}</label></td>
@@ -280,11 +317,11 @@ impl Model {
                 <>
                 <tr>
                     <td><label>{"Minimum: "}</label></td>
-                    <td><input type="number" value={property.minimum.unwrap_or(0).to_string()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateIntegerPropertyMinimum(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as i32))} /></td>
+                    <td><input type="number" value={property.minimum.map(|n| n.to_string()).unwrap_or_else(|| "".to_owned())} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateIntegerPropertyMinimum(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as i32))} /></td>
                 </tr>
                 <tr>
                     <td><label>{"Maximum: "}</label></td>
-                    <td><input type="number" value={property.maximum.unwrap_or(0).to_string()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateIntegerPropertyMaximum(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as i32))} /></td>
+                    <td><input type="number" value={property.maximum.map(|n| n.to_string()).unwrap_or_else(|| "".to_owned())} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateIntegerPropertyMaximum(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as i32))} /></td>
                 </tr>
                 </>
             },
@@ -296,11 +333,11 @@ impl Model {
                 </tr>
                 <tr>
                     <td><label>{"Min items: "}</label></td>
-                    <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateArrayPropertyMinItems(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
+                    <td><input type="number" value={property.min_items.map(|n| n.to_string()).unwrap_or_else(|| "".to_owned())} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateArrayPropertyMinItems(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
                 </tr>
                 <tr>
                     <td><label>{"Max items: "}</label></td>
-                    <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateArrayPropertyMaxItems(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
+                    <td><input type="number" value={property.max_items.map(|n| n.to_string()).unwrap_or_else(|| "".to_owned())} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateArrayPropertyMaxItems(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
                 </tr>
                 </>
             },
@@ -314,15 +351,14 @@ impl Model {
                 <tr>
                     <td><button class="button" onclick={ctx.link().callback(move |_| Msg::AddRecProperty(doc_index, prop_index))}>{"Add Inner Property"}</button></td>
                 </tr>
-                {self.rec_render_additional_properties(&data_type, doc_index, prop_index, 0, ctx)}
                 <p><b>{"Optional property parameters:"}</b></p>
                 <tr>
                     <td><label>{"Min properties: "}</label></td>
-                    <td><input type="number" value={property.min_properties.unwrap_or(0).to_string()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateObjectPropertyMinProperties(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
+                    <td><input type="number" value={property.min_properties.map(|n| n.to_string()).unwrap_or_else(|| "".to_owned())} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateObjectPropertyMinProperties(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
                 </tr>
                 <tr>
                     <td><label>{"Max properties: "}</label></td>
-                    <td><input type="number" value={property.max_properties.unwrap_or(0).to_string()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateObjectPropertyMaxProperties(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
+                    <td><input type="number" value={property.max_properties.map(|n| n.to_string()).unwrap_or_else(|| "".to_owned())} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateObjectPropertyMaxProperties(doc_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number() as u32))} /></td>
                 </tr>
                 </>
             },
@@ -512,28 +548,28 @@ impl Model {
             
                 html! {
                     <>
-                    //<tr>
-                    //    <td><label>{"Min properties: "}</label></td>
-                    //    <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| {
-                    //        let value = e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number();
-                    //        let value = match value {
-                    //            v if v.is_finite() => Some(v as u32),
-                    //            _ => None,
-                    //        };
-                    //        Msg::UpdateObjectRecPropertyMinProperties(doc_index, prop_index, recursive_prop_index, value.unwrap_or(0))
-                    //    })} value={min_props.map(|n| n.to_string()).unwrap_or_default().to_owned()} /></td>
-                    //</tr>
-                    //<tr>
-                    //    <td><label>{"Max properties: "}</label></td>
-                    //    <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| {
-                    //        let value = e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number();
-                    //        let value = match value {
-                    //            v if v.is_finite() => Some(v as u32),
-                    //            _ => None,
-                    //        };
-                    //        Msg::UpdateObjectRecPropertyMaxProperties(doc_index, prop_index, recursive_prop_index, value.unwrap_or(0))
-                    //    })} value={max_props.map(|n| n.to_string()).unwrap_or_default().to_owned()} /></td>
-                    //</tr>
+                    <tr>
+                        <td><label>{"Min properties: "}</label></td>
+                        <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| {
+                            let value = e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number();
+                            let value = match value {
+                                v if v.is_finite() => Some(v as u32),
+                                _ => None,
+                            };
+                            Msg::UpdateObjectRecPropertyMinProperties(doc_index, prop_index, recursive_prop_index, value.unwrap_or(0))
+                        })} value={min_props.map(|n| n.to_string()).unwrap_or_default().to_owned()} /></td>
+                    </tr>
+                    <tr>
+                        <td><label>{"Max properties: "}</label></td>
+                        <td><input type="number" oninput={ctx.link().callback(move |e: InputEvent| {
+                            let value = e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value_as_number();
+                            let value = match value {
+                                v if v.is_finite() => Some(v as u32),
+                                _ => None,
+                            };
+                            Msg::UpdateObjectRecPropertyMaxProperties(doc_index, prop_index, recursive_prop_index, value.unwrap_or(0))
+                        })} value={max_props.map(|n| n.to_string()).unwrap_or_default().to_owned()} /></td>
+                    </tr>
                     </>
                 }
             },
@@ -787,7 +823,6 @@ impl Model {
                 if rec_prop.required {
                     if !prop.rec_required.as_ref().cloned().unwrap_or_default().contains(&rec_prop.name) {
                         prop.rec_required.get_or_insert_with(Vec::new).push(rec_prop.name.clone());
-                        console::log_1(&format!("rec_prop.name inserted into prop.rec_required: {:?}", prop.rec_required).into());
                     }
                 } else {
                     if prop.rec_required.as_ref().map_or(false, |req| req.contains(&rec_prop.name)) {
@@ -884,17 +919,20 @@ impl Component for Model {
                 self.document_types[doc_index].indices[index_index].properties[prop_index].1 = sorting;
                 true
             }
-            Msg::UpdatePropertyType(doc_index, prop_index, data_type) => {
-                let data_type = match data_type.as_str() {
-                    "String" => DataType::String,
-                    "Integer" => DataType::Integer,
-                    "Array" => DataType::Array,
-                    "Object" => DataType::Object,
-                    "Number" => DataType::Number,
-                    "Boolean" => DataType::Boolean,
-                    _ => unreachable!(),
-                };
-                self.document_types[doc_index].properties[prop_index].data_type = data_type;
+            Msg::UpdatePropertyType(doc_index, prop_index, new_property) => {
+                let prop = &mut self.document_types[doc_index].properties[prop_index];
+                prop.data_type = new_property.data_type;
+                prop.min_length = new_property.min_length;
+                prop.max_length = new_property.max_length;
+                prop.pattern = new_property.pattern;
+                prop.format = new_property.format;
+                prop.minimum = new_property.minimum;
+                prop.maximum = new_property.maximum;
+                prop.byte_array = new_property.byte_array;
+                prop.min_items = new_property.min_items;
+                prop.max_items = new_property.max_items;
+                prop.min_properties = new_property.min_properties;
+                prop.max_properties = new_property.max_properties;
                 true
             }
             Msg::UpdateIndexUnique(doc_index, index_index, unique) => {
@@ -1108,7 +1146,11 @@ impl Component for Model {
         }
     }
 
-    fn view(&self, ctx: &yew::Context<Self>) -> Html {        
+    fn view(&self, ctx: &yew::Context<Self>) -> Html {
+        let s = &self.json_object.join(",");
+        let new_s = format!("{{{}}}", s);
+        let json_obj: serde_json::Value = serde_json::from_str(&new_s).unwrap();
+
         // html
         html! {
             <main class="home">
@@ -1141,9 +1183,6 @@ impl Component for Model {
                     <h3>{if self.json_object.len() != 0 as usize {"With whitespace:"} else {""}}</h3>
                     <pre>
                     {if self.json_object.len() != 0 as usize {
-                        let s = &self.json_object.join(",");
-                        let new_s = format!("{{{}}}", s);
-                        let json_obj: serde_json::Value = serde_json::from_str(&new_s).unwrap();
                         serde_json::to_string_pretty(&json_obj).unwrap()
                     } else { 
                         "".to_string()
@@ -1152,16 +1191,17 @@ impl Component for Model {
                     <h3>{if self.json_object.len() != 0 as usize {"Without whitespace:"} else {""}}</h3>
                     <pre>
                     {if self.json_object.len() != 0 as usize {
-                        let s = &self.json_object.join(",");
-                        let new_s = format!("{{{}}}", s);
-                        let json_obj: serde_json::Value = serde_json::from_str(&new_s).unwrap();
                         serde_json::to_string(&json_obj).unwrap()
                     } else { 
                         "".to_string()
                     }}
                     </pre>
+                    <p><b>{
+                        if serde_json::to_string(&json_obj).unwrap().len() > 2 {
+                        format!("Size: {} bytes", serde_json::to_string(&json_obj).unwrap().len())
+                        } else {String::from("Size: 0 bytes")}
+                    }</b></p>
                 </p>
-
             </div>
             </body>
             </main>
