@@ -1,8 +1,11 @@
+//! Dash Platform Data Contract Creator
+
 use serde::{Serialize, Deserialize};
 use yew::{html, Component, Html, Event, InputEvent, FocusEvent, TargetCast};
 use serde_json::{json, Map, Value};
 use web_sys::{HtmlSelectElement};
 
+/// Document type struct
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(non_snake_case)]
 struct DocumentType {
@@ -27,6 +30,7 @@ impl Default for DocumentType {
     }
 }
 
+/// Property struct with optional fields for validation parameters specific to each data type
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 struct Property {
     name: String,
@@ -50,6 +54,7 @@ struct Property {
     additional_properties: Option<bool>, // For Object data type
 }
 
+/// Index struct
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 struct Index {
     name: String,
@@ -57,6 +62,7 @@ struct Index {
     unique: bool,
 }
 
+/// Index properties struct
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct IndexProperties(String, String);
 
@@ -69,6 +75,7 @@ impl Default for IndexProperties {
     }
 }
 
+/// Property data types
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 enum DataType {
     #[default]
@@ -80,11 +87,14 @@ enum DataType {
     Boolean
 }
 
+/// Model is the umbrella structs that contains all the document types 
+/// for the contract and the vector of strings comprising the json object to be output
 struct Model {
     document_types: Vec<DocumentType>,
     json_object: Vec<String>,
 }
 
+/// Messages from input fields which call the functions to update Model
 enum Msg {
     // General
     Submit,
@@ -141,6 +151,8 @@ enum Msg {
     UpdateObjectRecPropertyMinProperties(usize, usize, usize, u32),
 }
 
+/// Sets the validation parameters to default. Used to reset the fields when a 
+/// user inputs data into the validation parameter fields and then changes data type.
 fn default_additional_properties(data_type: &str) -> Property {
     match data_type {
         "String" => Property {
@@ -182,6 +194,7 @@ fn default_additional_properties(data_type: &str) -> Property {
     }
 }
 
+// Contains functions that generate the webpage and json object
 impl Model {
 
     fn view_document_types(&self, ctx: &yew::Context<Self>) -> Html {
@@ -1137,6 +1150,7 @@ impl Component for Model {
                         <li>{"$createdAt"}</li>
                         <li>{"$updatedAt"}</li>
                     </ul>
+                    <p>{"- This app does not yet validate the generated contracts against Dash Platform Protocol. For information on how to create compliant contracts, see "}<a href="https://dashplatform.readme.io/docs/platform-protocol-reference-data-contract">{"the documentation"}</a>{"."}</p>
                 </div>
             </div>
             <div class="column-right">
