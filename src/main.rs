@@ -251,7 +251,7 @@ impl Model {
                 </div>
                 <br/>
                 <div>
-                <button class="button" onclick={ctx.link().callback(move |_| Msg::RemoveDocumentType(index))}>{"Remove document type"}</button>
+                <button class="button" onclick={ctx.link().callback(move |_| Msg::RemoveDocumentType(index))}>{format!("Remove document type {}", index+1)}</button>
                 </div>
             </div>
             <br/>
@@ -273,7 +273,7 @@ impl Model {
         html! {
             <>
                 <tr>
-                    <th>{"Name"}</th>
+                    <th>{format!("Property {} name", prop_index+1)}</th>
                     <th>{"Type"}</th>
                     <th>{"Required"}</th>
                 </tr>
@@ -415,8 +415,9 @@ impl Model {
     
         html! {
             <>
+                //<><b>{format!("Inner property {}:", recursive_prop_index+1)}</b></><br/><br/>
                 <tr>
-                    <th>{"Name"}</th>
+                    <th>{format!("Inner Property {} name", recursive_prop_index+1)}</th>
                     <th>{"Type"}</th>
                     <th>{"Required"}</th>
                 </tr>
@@ -611,7 +612,7 @@ impl Model {
         html! {
             <>
             <tr>
-                <th>{"Name"}</th>
+                <th>{format!("Index {} name", index_index+1)}</th>
                 <th>{"Unique"}</th>
                 <th>{""}</th>
             </tr>
@@ -864,7 +865,7 @@ impl Model {
     fn parse_imported_json(&mut self) {
 
         // Parse the string into a HashMap
-        let parsed_json: HashMap<String, Value> = serde_json::from_str(&self.imported_json).unwrap();
+        let parsed_json: HashMap<String, Value> = serde_json::from_str(&self.imported_json).unwrap_or_default();
 
         // Convert the HashMap into a Vec of Strings for json_object
         self.json_object = parsed_json.iter().map(|(k, v)| {
@@ -1412,7 +1413,7 @@ impl Component for Model {
                     <h2>{"Contract"}</h2>
                     <h3>{if self.json_object.len() != 0 as usize {"With whitespace:"} else {""}}</h3>
                     <pre>
-                    <textarea class="textarea" id="json_output" value={if self.json_object.len() != 0 as usize {json_pretty} else {String::from("")}} onchange={ctx.link().callback(move |e: Event| Msg::UpdateImportedJson(e.target_dyn_into::<web_sys::HtmlTextAreaElement>().unwrap().value()))}></textarea>
+                    <textarea class="textarea" id="json_output" value={if self.json_object.len() == 0 as usize {self.imported_json.clone()} else {json_pretty}} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateImportedJson(e.target_dyn_into::<web_sys::HtmlTextAreaElement>().unwrap().value()))}></textarea>
                     </pre>
                     <h3>{if self.json_object.len() != 0 as usize {"Without whitespace:"} else {""}}</h3>
                     <pre>

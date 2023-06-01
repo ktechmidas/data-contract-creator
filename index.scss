@@ -61,6 +61,21 @@ input[type="text3"] {
   }
 }
 
+input[type="text4"] {
+  border: 2px solid $light-gray;
+  border-radius: 4px;
+  padding: 0.5rem;
+  max-width: 100%;
+  width: 90%;
+  &:focus {
+    outline: none;
+    border-color: $light-blue;
+  }
+  &.error {
+    border-color: red;
+  }
+}
+
 input[type="checkbox"] {
   width: 100px;
 }
