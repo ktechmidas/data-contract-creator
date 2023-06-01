@@ -1,10 +1,11 @@
 # Data Contract Creator
 
-This is a simple web app written in Rust using the [Yew](https://yew.rs/) framework for generating data contract schemas for Dash Platform.
+This is a simple web app written in Rust using the [Yew](https://yew.rs/) framework for generating and editing data contract schemas for Dash Platform.
 
 ## Features
 
 - Dynamically generate and modify data contract JSON schemas using a web interface
+- Import existing data contract JSON schemas for editing
 - Add/remove document types, properties, and indices
 - Set data types, validation constraints, and descriptions for properties and indices
 - View the generated data contract JSON schema in real-time
@@ -50,6 +51,11 @@ On startup, there will already be one document type loaded. If you'd like to add
 
 1. Click the "Submit" button
 2. View the generated schema in the "Contract" section
+
+### Import a Data Contract
+
+1. Paste a data contract into the text area in the right side column
+2. Click the "Import" button
 
 ## Contributing
 
