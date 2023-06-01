@@ -371,7 +371,7 @@ impl Model {
                     </td>
                 </tr>
                 <tr>
-                    <td><button class="button" onclick={ctx.link().callback(move |_| Msg::AddRecProperty(doc_index, prop_index))}>{"Add Inner Property"}</button></td>
+                    <td><button class="button" onclick={ctx.link().callback(move |_| Msg::AddRecProperty(doc_index, prop_index))}>{"Add inner property"}</button></td>
                 </tr>
                 <p><b>{"Optional property parameters:"}</b></p>
                 <tr>
@@ -417,7 +417,7 @@ impl Model {
             <>
                 //<><b>{format!("Inner property {}:", recursive_prop_index+1)}</b></><br/><br/>
                 <tr>
-                    <th>{format!("Inner Property {} name", recursive_prop_index+1)}</th>
+                    <th>{format!("Inner property {} name", recursive_prop_index+1)}</th>
                     <th>{"Type"}</th>
                     <th>{"Required"}</th>
                 </tr>
