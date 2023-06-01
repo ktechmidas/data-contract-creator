@@ -1,9 +1,11 @@
 //! Dash Platform Data Contract Creator
 
+use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
+use wasm_bindgen::JsValue;
 use yew::{html, Component, Html, Event, InputEvent, FocusEvent, TargetCast};
 use serde_json::{json, Map, Value};
-use web_sys::{HtmlSelectElement};
+use web_sys::{HtmlSelectElement, console};
 
 /// Document type struct
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -91,7 +93,10 @@ enum DataType {
 /// for the contract and the vector of strings comprising the json object to be output
 struct Model {
     document_types: Vec<DocumentType>,
+    /// Each full document type is a single string in json_object
     json_object: Vec<String>,
+    /// A string containing a full data contract
+    imported_json: String,
 }
 
 /// Messages from input fields which call the functions to update Model
@@ -149,6 +154,10 @@ enum Msg {
     UpdateArrayRecPropertyMaxItems(usize, usize, usize, u32),
     UpdateObjectRecPropertyMaxProperties(usize, usize, usize, u32),
     UpdateObjectRecPropertyMinProperties(usize, usize, usize, u32),
+
+    // Import
+    Import,
+    UpdateImportedJson(String),
 }
 
 /// Sets the validation parameters to default. Used to reset the fields when a 
@@ -632,17 +641,21 @@ impl Model {
 
     fn view_index_properties(&self, doc_index: usize, index_index: usize, prop_index: usize, ctx: &yew::Context<Self>) -> Html {
         let sorting_options = vec!["Ascending", "Descending"];
+        let mut current_sort = sorting_options[0];
+        if self.document_types[doc_index].indices[index_index].properties[prop_index].1.clone() == String::from("desc") {
+            current_sort = sorting_options[1];
+        }
         html!(
-            <tr>
-                <td></td>
-                <td><label>{format!("Property {}: ", prop_index+1)}</label><input type="text3" value={self.document_types[doc_index].indices[index_index].properties[prop_index].0.clone()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateIndexProperty(doc_index, index_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} /></td>
-                <td><select value={sorting_options[0]} onchange={ctx.link().callback(move |e: Event| Msg::UpdateIndexSorting(doc_index, index_index, prop_index, match e.target_dyn_into::<HtmlSelectElement>().unwrap().value().as_str() {
+            <tr class="row">
+                <td class="label-column">{format!("Property {}: ", prop_index+1)}</td>
+                <td class="input-column"><input type="text3" value={self.document_types[doc_index].indices[index_index].properties[prop_index].0.clone()} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateIndexProperty(doc_index, index_index, prop_index, e.target_dyn_into::<web_sys::HtmlInputElement>().unwrap().value()))} /></td>
+                <td class="select-column"><select value={current_sort} onchange={ctx.link().callback(move |e: Event| Msg::UpdateIndexSorting(doc_index, index_index, prop_index, match e.target_dyn_into::<HtmlSelectElement>().unwrap().value().as_str() {
                     "Ascending" => String::from("asc"),
                     "Descending" => String::from("desc"),
                     _ => panic!("Invalid data type selected"),
                 }))}>
                     {for sorting_options.iter().map(|option| html! {
-                        <option value={String::from(*option)} selected={&String::from(*option)==sorting_options[0]}>{String::from(*option)}</option>
+                        <option value={String::from(*option)} selected={&String::from(*option)==current_sort}>{String::from(*option)}</option>
                     })}
                 </select></td>
             </tr>
@@ -847,6 +860,233 @@ impl Model {
         }
         rec_props_map
     }
+
+    fn parse_imported_json(&mut self) {
+
+        // Parse the string into a HashMap
+        let parsed_json: HashMap<String, Value> = serde_json::from_str(&self.imported_json).unwrap();
+
+        // Convert the HashMap into a Vec of Strings for json_object
+        self.json_object = parsed_json.iter().map(|(k, v)| {
+            format!("\"{}\":{}", k, v.to_string())
+        }).collect();
+
+        // Empty self.document_types
+        self.document_types = Vec::new();
+
+        // Iterate over each key-value pair in the parsed JSON and push to document_types
+        for (doc_type_name, doc_type_value) in parsed_json {
+            // Create a new default DocumentType and set its name
+            let mut document_type = DocumentType::default();
+            document_type.name = doc_type_name;
+
+            // Check if value is an object
+            if let Some(doc_type_obj) = doc_type_value.as_object() {
+                // Iterate over properties
+                if let Some(properties) = doc_type_obj.get("properties") {
+                    if let Some(properties_obj) = properties.as_object() {
+                        for (prop_name, prop_value) in properties_obj {
+                            // Create a new default Property and set its name
+                            let mut property = Property::default();
+                            property.name = prop_name.to_string();
+
+                            if let Some(required) = doc_type_obj.get("required") {
+                                if let Some(required_array) = required.as_array() {
+                                    if required_array.iter().any(|v| *v == Value::String(prop_name.clone())) {
+                                        property.required = true;
+                                    }
+                                }
+                            }
+
+                            // Check if property value is an object
+                            if let Some(prop_obj) = prop_value.as_object() {
+                                // Set the Property.data_type to the value of "type"
+                                if let Some(data_type) = prop_obj.get("type") {
+                                    property.data_type = match data_type.as_str().unwrap() {
+                                        "string" => DataType::String,
+                                        "integer" => DataType::Integer,
+                                        "array" => DataType::Array,
+                                        "object" => DataType::Object,
+                                        "number" => DataType::Number,
+                                        "boolean" => DataType::Boolean,
+                                        _ => panic!("Unexpected type value"),
+                                    };
+                                }
+                                if let Some(byte_array) = prop_obj.get("byteArray") {
+                                    property.byte_array = byte_array.as_bool();
+                                }
+                                if let Some(description) = prop_obj.get("description") {
+                                    property.description = description.as_str().map(|s| s.to_string());
+                                }
+                                if let Some(comment) = prop_obj.get("$comment") {
+                                    property.comment = comment.as_str().map(|s| s.to_string());
+                                }
+                                if let Some(min_length) = prop_obj.get("minLength") {
+                                    property.min_length = min_length.as_u64().map(|num| num as u32);
+                                }
+                                if let Some(max_length) = prop_obj.get("maxLength") {
+                                    property.max_length = max_length.as_u64().map(|num| num as u32);
+                                }
+                                if let Some(pattern) = prop_obj.get("pattern") {
+                                    property.pattern = pattern.as_str().map(|s| s.to_string());
+                                }
+                                if let Some(format) = prop_obj.get("format") {
+                                    property.format = format.as_str().map(|s| s.to_string());
+                                }
+                                if let Some(minimum) = prop_obj.get("minimum") {
+                                    property.minimum = minimum.as_i64().map(|num| num as i32);
+                                }
+                                if let Some(maximum) = prop_obj.get("maximum") {
+                                    property.maximum = maximum.as_i64().map(|num| num as i32);
+                                }
+                                if let Some(min_items) = prop_obj.get("minItems") {
+                                    property.min_items = min_items.as_u64().map(|num| num as u32);
+                                }
+                                if let Some(max_items) = prop_obj.get("maxItems") {
+                                    property.max_items = max_items.as_u64().map(|num| num as u32);
+                                }
+                                if let Some(min_properties) = prop_obj.get("minProperties") {
+                                    property.min_properties = min_properties.as_u64().map(|num| num as u32);
+                                }
+                                if let Some(max_properties) = prop_obj.get("maxProperties") {
+                                    property.max_properties = max_properties.as_u64().map(|num| num as u32);
+                                }
+                                if let Some(nested_props) = prop_obj.get("properties") {
+                                    if let Some(nested_props_map) = nested_props.as_object() {
+                                        let mut nested_props_vec = Vec::new();
+                                        for (nested_prop_name, nested_prop_value) in nested_props_map {
+                                            let mut nested_property = Property::default();
+                                            nested_property.name = nested_prop_name.clone();
+                                            if let Some(rec_required) = prop_obj.get("required") {
+                                                if let Some(rec_required_array) = rec_required.as_array() {
+                                                    if rec_required_array.iter().any(|v| *v == Value::String(nested_prop_name.clone())) {
+                                                        nested_property.required = true;
+                                                    }
+                                                }
+                                            }
+                                            if let Some(nested_prop_obj) = nested_prop_value.as_object() {
+                                                if let Some(data_type) = nested_prop_obj.get("type") {
+                                                    nested_property.data_type = match data_type.as_str().unwrap() {
+                                                        "string" => DataType::String,
+                                                        "integer" => DataType::Integer,
+                                                        "array" => DataType::Array,
+                                                        "object" => DataType::Object,
+                                                        "number" => DataType::Number,
+                                                        "boolean" => DataType::Boolean,
+                                                        _ => panic!("Unexpected type value"),
+                                                    };
+                                                }
+                                                if let Some(byte_array) = nested_prop_obj.get("byteArray") {
+                                                    nested_property.byte_array = byte_array.as_bool();
+                                                }
+                                                if let Some(description) = nested_prop_obj.get("description") {
+                                                    nested_property.description = description.as_str().map(|s| s.to_string());
+                                                }
+                                                if let Some(comment) = nested_prop_obj.get("$comment") {
+                                                    nested_property.comment = comment.as_str().map(|s| s.to_string());
+                                                }
+                                                if let Some(min_length) = nested_prop_obj.get("minLength") {
+                                                    nested_property.min_length = min_length.as_u64().map(|num| num as u32);
+                                                }
+                                                if let Some(max_length) = nested_prop_obj.get("maxLength") {
+                                                    nested_property.max_length = max_length.as_u64().map(|num| num as u32);
+                                                }
+                                                if let Some(pattern) = nested_prop_obj.get("pattern") {
+                                                    nested_property.pattern = pattern.as_str().map(|s| s.to_string());
+                                                }
+                                                if let Some(format) = nested_prop_obj.get("format") {
+                                                    nested_property.format = format.as_str().map(|s| s.to_string());
+                                                }
+                                                if let Some(minimum) = nested_prop_obj.get("minimum") {
+                                                    nested_property.minimum = minimum.as_i64().map(|num| num as i32);
+                                                }
+                                                if let Some(maximum) = nested_prop_obj.get("maximum") {
+                                                    nested_property.maximum = maximum.as_i64().map(|num| num as i32);
+                                                }
+                                                if let Some(min_items) = nested_prop_obj.get("minItems") {
+                                                    nested_property.min_items = min_items.as_u64().map(|num| num as u32);
+                                                }
+                                                if let Some(max_items) = nested_prop_obj.get("maxItems") {
+                                                    nested_property.max_items = max_items.as_u64().map(|num| num as u32);
+                                                }
+                                                if let Some(min_properties) = nested_prop_obj.get("minProperties") {
+                                                    nested_property.min_properties = min_properties.as_u64().map(|num| num as u32);
+                                                }
+                                                if let Some(max_properties) = nested_prop_obj.get("maxProperties") {
+                                                    nested_property.max_properties = max_properties.as_u64().map(|num| num as u32);
+                                                }
+                                                nested_props_vec.push(nested_property);
+                                            }
+                                        }
+                                        property.properties = Some(Box::new(nested_props_vec));
+                                    }
+                                }
+                            }
+                            // Add the property to the DocumentType
+                            document_type.properties.push(property);
+                        }
+                    }
+                }
+
+                // Iterate over indices
+                if let Some(indices) = doc_type_obj.get("indices") {
+                    if let Some(indices_array) = indices.as_array() {
+                        for index_value in indices_array {
+                            // Check if index value is an object
+                            if let Some(index_obj) = index_value.as_object() {
+                                // Create a new default Index
+                                let mut index = Index::default();
+
+                                // Set index name
+                                if let Some(name) = index_obj.get("name") {
+                                    index.name = name.as_str().unwrap().to_string();
+                                }
+
+                                // Set unique
+                                if let Some(unique) = index_obj.get("unique") {
+                                    index.unique = unique.as_bool().unwrap();
+                                }
+
+                                // Iterate over index properties
+                                if let Some(properties) = index_obj.get("properties") {
+                                    if let Some(properties_array) = properties.as_array() {
+                                        for prop_value in properties_array {
+                                            // Check if property value is an object
+                                            if let Some(prop_obj) = prop_value.as_object() {
+                                                // Create a new default IndexProperties
+                                                let mut index_properties = IndexProperties::default();
+
+                                                // Set index properties name and order
+                                                for (name, order) in prop_obj {
+                                                    index_properties.0 = name.to_string();
+                                                    index_properties.1 = order.as_str().unwrap().to_string();
+                                                }
+
+                                                // Add index properties to the Index
+                                                index.properties.push(index_properties);
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Add the index to the DocumentType
+                                document_type.indices.push(index);
+                            }
+                        }
+                    }
+        
+                    // Process comment
+                    if let Some(comment) = doc_type_obj.get("$comment") {
+                        document_type.comment = comment.as_str().unwrap().to_string();
+                    }
+                }
+        
+                // Push to document_types
+                self.document_types.push(document_type);
+            }
+        }
+    }
+
 }
 
 impl Component for Model {
@@ -859,6 +1099,7 @@ impl Component for Model {
         Self {
             document_types: vec![default_document_type],
             json_object: vec![],
+            imported_json: String::new(),
         }
     }
 
@@ -1108,14 +1349,25 @@ impl Component for Model {
                     property_vec[rec_prop_index].max_properties = Some(max_props);
                 }
             }
+
+            // Import
+            Msg::UpdateImportedJson(import) => {
+                //console::log_1(&JsValue::from_str(&import));
+                self.imported_json = import;
+            }
+            Msg::Import => {
+                self.parse_imported_json();
+            }
         }
         true
     }
 
     fn view(&self, ctx: &yew::Context<Self>) -> Html {
+
         let s = &self.json_object.join(",");
         let new_s = format!("{{{}}}", s);
         let json_obj: serde_json::Value = serde_json::from_str(&new_s).unwrap();
+        let json_pretty = serde_json::to_string_pretty(&json_obj).unwrap();
 
         // html
         html! {
@@ -1160,11 +1412,7 @@ impl Component for Model {
                     <h2>{"Contract"}</h2>
                     <h3>{if self.json_object.len() != 0 as usize {"With whitespace:"} else {""}}</h3>
                     <pre>
-                    {if self.json_object.len() != 0 as usize {
-                        serde_json::to_string_pretty(&json_obj).unwrap()
-                    } else { 
-                        "".to_string()
-                    }}
+                    <textarea class="textarea" id="json_output" value={if self.json_object.len() != 0 as usize {json_pretty} else {String::from("")}} onchange={ctx.link().callback(move |e: Event| Msg::UpdateImportedJson(e.target_dyn_into::<web_sys::HtmlTextAreaElement>().unwrap().value()))}></textarea>
                     </pre>
                     <h3>{if self.json_object.len() != 0 as usize {"Without whitespace:"} else {""}}</h3>
                     <pre>
@@ -1174,11 +1422,14 @@ impl Component for Model {
                         "".to_string()
                     }}
                     </pre>
-                    <p><b>{
+                    <p><b>
+                    {
                         if serde_json::to_string(&json_obj).unwrap().len() > 2 {
                         format!("Size: {} bytes", serde_json::to_string(&json_obj).unwrap().len())
                         } else {String::from("Size: 0 bytes")}
-                    }</b></p>
+                    }
+                    </b></p>
+                    <button class="button-import" onclick={ctx.link().callback(|_| Msg::Import)}>{"Import"}</button>
                 </p>
             </div>
             </body>
