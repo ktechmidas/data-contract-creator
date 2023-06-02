@@ -146,6 +146,21 @@ select {
   }
 }
 
+.button-clear {
+  border: none;
+  background-color: rgb(233, 233, 233);
+  padding: 10px 20px;
+  border-radius: 5px;
+  margin-top: 2px;
+  margin-bottom: 2px;
+  width: 80px;
+  flex-direction:row;
+  align-self: right;
+  &:hover {
+    cursor: pointer;
+  }
+}
+
 /* Layout */
 main {
   font-family: 'Nunito', sans-serif;
@@ -252,4 +267,8 @@ pre {
   display: flex;
   align-items: center;
   padding-right: 10px;
+}
+
+.instructions {
+  margin-bottom: 0px;
 }

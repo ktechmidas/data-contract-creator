@@ -158,6 +158,7 @@ enum Msg {
     // Import
     Import,
     UpdateImportedJson(String),
+    Clear,
 }
 
 /// Sets the validation parameters to default. Used to reset the fields when a 
@@ -1359,6 +1360,10 @@ impl Component for Model {
             Msg::Import => {
                 self.parse_imported_json();
             }
+            Msg::Clear => {
+                self.json_object = vec![];
+                self.imported_json = String::new();
+            }
         }
         true
     }
@@ -1370,12 +1375,30 @@ impl Component for Model {
         let json_obj: serde_json::Value = serde_json::from_str(&new_s).unwrap();
         let json_pretty = serde_json::to_string_pretty(&json_obj).unwrap();
 
+        let textarea = if self.json_object.len() != 0 {
+            html! {
+                <textarea class="textarea" id="json_output" value={if self.json_object.len() != 0 as usize {
+                    serde_json::to_string(&json_obj).unwrap()
+                } else { 
+                    "".to_string()
+                }}>
+                </textarea>
+            }
+        } else {
+            html! {}
+        };
+
         // html
         html! {
             <main class="home">
             <img class="logo" src="https://media.dash.org/wp-content/uploads/dash-logo.svg" alt="Dash logo" width="200" height="100" />
             <br/><br/>
             <h1 class="header">{"Data Contract Creator"}</h1>
+            <h3 class="instructions">{"Instructions:"}</h3>
+            <ul>
+                <li><div class="instructions-text">{"Use the left column to build, edit, and submit a data contract."}</div></li>
+                <li><div class="instructions-text">{"Use the right column to copy the generated data contract to your clipboard or import."}</div></li>
+            </ul>
             <body>
             <div class="column-left">
 
@@ -1413,16 +1436,10 @@ impl Component for Model {
                     <h2>{"Contract"}</h2>
                     <h3>{if self.json_object.len() != 0 as usize {"With whitespace:"} else {""}}</h3>
                     <pre>
-                    <textarea class="textarea" id="json_output" value={if self.json_object.len() == 0 as usize {self.imported_json.clone()} else {json_pretty}} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateImportedJson(e.target_dyn_into::<web_sys::HtmlTextAreaElement>().unwrap().value()))}></textarea>
+                    <textarea class="textarea" id="json_output" placeholder="Paste here to import" value={if self.json_object.len() == 0 as usize {self.imported_json.clone()} else {json_pretty}} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateImportedJson(e.target_dyn_into::<web_sys::HtmlTextAreaElement>().unwrap().value()))}></textarea>
                     </pre>
                     <h3>{if self.json_object.len() != 0 as usize {"Without whitespace:"} else {""}}</h3>
-                    <pre>
-                    {if self.json_object.len() != 0 as usize {
-                        serde_json::to_string(&json_obj).unwrap()
-                    } else { 
-                        "".to_string()
-                    }}
-                    </pre>
+                    <pre>{textarea}</pre>
                     <p><b>
                     {
                         if serde_json::to_string(&json_obj).unwrap().len() > 2 {
@@ -1430,7 +1447,8 @@ impl Component for Model {
                         } else {String::from("Size: 0 bytes")}
                     }
                     </b></p>
-                    <button class="button-import" onclick={ctx.link().callback(|_| Msg::Import)}>{"Import"}</button>
+                    <div><button class="button-import" onclick={ctx.link().callback(|_| Msg::Import)}>{"Import"}</button></div>
+                    <div><button class="button-clear" onclick={ctx.link().callback(|_| Msg::Clear)}>{"Clear"}</button></div>
                 </p>
             </div>
             </body>
