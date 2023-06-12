@@ -1,11 +1,12 @@
 //! Dash Platform Data Contract Creator
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 use serde::{Serialize, Deserialize};
 use wasm_bindgen::JsValue;
 use yew::{html, Component, Html, Event, InputEvent, FocusEvent, TargetCast};
 use serde_json::{json, Map, Value};
 use web_sys::{HtmlSelectElement, console};
+use dpp::{self, consensus::{basic::BasicError, ConsensusError}, prelude::Identifier, Convertible};
 
 /// Document type struct
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1375,6 +1376,34 @@ impl Component for Model {
         let json_obj: serde_json::Value = serde_json::from_str(&new_s).unwrap();
         let json_pretty = serde_json::to_string_pretty(&json_obj).unwrap();
 
+        // DPP validation
+        let protocol_version_validator = dpp::version::ProtocolVersionValidator::default();
+        let data_contract_validator = dpp::data_contract::validation::data_contract_validator::DataContractValidator::new(Arc::new(protocol_version_validator));
+        let factory = dpp::data_contract::DataContractFactory::new(1, Arc::new(data_contract_validator));
+        let owner_id = Identifier::random();
+        let contract = factory
+            .create(owner_id, json_obj.clone().into(), None, None)
+            .expect("data in fixture should be correct");
+        let results = contract.data_contract.validate(&contract.data_contract.to_cleaned_object().unwrap()).unwrap_or_default();
+        let errors = results.errors;
+        let error_messages = extract_basic_error_messages(&errors);
+
+        fn extract_basic_error_messages(errors: &[ConsensusError]) -> Vec<String> {
+            errors
+                .iter()
+                .filter_map(|error| {
+                    if let ConsensusError::BasicError(inner) = error {
+                        if let dpp::errors::consensus::basic::basic_error::BasicError::JsonSchemaError(json_error) = inner {
+                            console::log_1(&JsValue::from_str(&json_error.property_name()));
+                        }
+                        Some(format!("{}", inner))
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        }
+
         let textarea = if self.json_object.len() != 0 {
             html! {
                 <textarea class="textarea" id="json_output" value={if self.json_object.len() != 0 as usize {
@@ -1395,9 +1424,9 @@ impl Component for Model {
             <br/><br/>
             <h1 class="header">{"Data Contract Creator"}</h1>
             <h3 class="instructions">{"Instructions:"}</h3>
-            <ul>
-                <li><div class="instructions-text">{"Use the left column to build, edit, and submit a data contract."}</div></li>
-                <li><div class="instructions-text">{"Use the right column to copy the generated data contract to your clipboard or import."}</div></li>
+            <ul class="instructions-text">
+                <li><div>{"Use the left column to build, edit, and submit a data contract."}</div></li>
+                <li><div>{"Use the right column to copy the generated data contract to your clipboard or import."}</div></li>
             </ul>
             <body>
             <div class="column-left">
@@ -1413,20 +1442,6 @@ impl Component for Model {
                     <button class="button button-primary" onclick={ctx.link().callback(|_| Msg::Submit)}>{"Submit"}</button>
                 </div>
                 <div class="footnotes">
-                    <h3>{"Notes"}</h3>
-                    <p>{"- For indexes on inner properties: use the format 'outerProperty.innerProperty'."}</p>
-                    <>{"- Some built-in document fields can be used as properties, such as:"}</>
-                    <ul>
-                        <li>{"$protocolVersion"}</li>
-                        <li>{"$id"}</li>
-                        <li>{"$type"}</li>
-                        <li>{"$revision"}</li>
-                        <li>{"$dataContractId"}</li>
-                        <li>{"$ownerId"}</li>
-                        <li>{"$createdAt"}</li>
-                        <li>{"$updatedAt"}</li>
-                    </ul>
-                    <p>{"- This app does not yet validate the generated contracts against Dash Platform Protocol. For information on how to create compliant contracts, see "}<a href="https://dashplatform.readme.io/docs/platform-protocol-reference-data-contract">{"the documentation"}</a>{"."}</p>
                 </div>
             </div>
             <div class="column-right">
@@ -1434,6 +1449,18 @@ impl Component for Model {
                 // format and display json object
                 <p class="output-container">
                     <h2>{"Contract"}</h2>
+                    <h3>{if self.json_object.len() != 0 as usize && error_messages.len() > 0 as usize {"Platform validation errors:"} else {""}}</h3>
+                    <div class="error-text">{
+                        if self.json_object.len() != 0 as usize && !error_messages.is_empty() {
+                            html! {
+                                <ul>
+                                    { for error_messages.iter().map(|i| html! { <li>{i.clone()}</li> }) }
+                                </ul>
+                            }
+                        } else { 
+                            html! { "" }
+                        }
+                    }</div>                    
                     <h3>{if self.json_object.len() != 0 as usize {"With whitespace:"} else {""}}</h3>
                     <pre>
                     <textarea class="textarea" id="json_output" placeholder="Paste here to import" value={if self.json_object.len() == 0 as usize {self.imported_json.clone()} else {json_pretty}} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateImportedJson(e.target_dyn_into::<web_sys::HtmlTextAreaElement>().unwrap().value()))}></textarea>
