@@ -680,7 +680,7 @@ impl Model {
                     DataType::Array => "array",
                     DataType::Object => "object",
                     DataType::Number => "number",
-                    DataType::Boolean => "bool",
+                    DataType::Boolean => "boolean",
                 }));
                 if prop.description.as_ref().map(|c| c.len()).unwrap_or(0) > 0 {
                     prop_obj.insert("description".to_owned(), json!(prop.description));
@@ -801,7 +801,7 @@ impl Model {
                     DataType::Array => "array",
                     DataType::Object => "object",
                     DataType::Number => "number",
-                    DataType::Boolean => "bool",
+                    DataType::Boolean => "boolean",
                 }));
                 if rec_prop.description.as_ref().map(|c| c.len()).unwrap_or(0) > 0 {
                     rec_prop_obj.insert("description".to_owned(), json!(rec_prop.description));
