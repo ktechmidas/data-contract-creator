@@ -1,61 +1,46 @@
 # Data Contract Creator
 
-This is a simple web app written in Rust using the [Yew](https://yew.rs/) framework for generating and editing data contract schemas for Dash Platform.
+This is a simple web app written in Rust using the [Yew](https://yew.rs/) framework for generating, editing, and validating data contract schemas for Dash Platform.
 
 ## Features
 
 - Dynamically generate and modify data contract JSON schemas using a web interface
 - Import existing data contract JSON schemas for editing
-- Add/remove document types, properties, and indices
-- Set data types, validation constraints, and descriptions for properties and indices
-- View the generated data contract JSON schema in real-time
+- Validate contracts against Dash Platform Protocol rules
 
 ## Setup
 
-If you've never used Yew, first:
+Yew environment:
 
 1. Install WebAssembly target: `rustup target add wasm32-unknown-unknown`
 2. Install Trunk: `cargo install --locked trunk`
 
-Otherwise:
+App:
 
 1. Clone the repository: `git clone https://github.com/pauldelucia/data-contract-creator.git`
-2. Change into the project directory: `cd data-contract-creator`
-3. Start the app `trunk serve --open`
+2. **Mac users** may need to run the following commands if they have issues compiling certain libraries such as secp256k1-sys:
+```
+export AR_PATH=$(command -v llvm-ar)
+export CLANG_PATH=$(command -v clang)
+export AR=${AR_PATH} CC=${CLANG_PATH} ${BUILD_COMMAND}
+export AR=${AR_PATH} CC=${CLANG_PATH} ${BINDGEN_COMMAND}
+```
+4. Change into the project directory: `cd data-contract-creator`
+5. Start the app `trunk serve --open`
 
 ## Usage
 
-### Adding a Document Type
+### Create and Edit a Data Contract
 
-On startup, there will already be one document type loaded. If you'd like to add another:
-
-1. Click the "Add document type" button
-2. Enter a name for the document type
-3. Add properties, indices, and other options as desired
-
-### Adding a Property
-
-1. Click the "Add property" button in the "Properties" section of a document type (new document types automatically have one)
-2. Enter a name for the property
-3. Select a data type from the dropdown menu
-4. Add validation constraints, descriptions, and other options as desired
-
-### Adding an Index
-
-1. Click the "Add Index" button in the "Indices" section of a document type
-2. Enter a name for the index
-3. Select the index type (unique or non-unique)
-4. Enter the properties to include in the index and their sort order
-
-### Generating a Data Contract
-
-1. Click the "Submit" button
-2. View the generated schema in the "Contract" section
+1. Use the left-side interface to add documents types, properties, and indexes
+2. Click the "Submit" button
+3. View the generated schema in the "Contract" section
 
 ### Import a Data Contract
 
-1. Paste a data contract into the text area in the right side column
-2. Click the "Import" button
+1. If the right-side text area is already populated, click the "Clear" button
+2. Paste a data contract into the right-side text area
+3. Click the "Import" button
 
 ## Contributing
 
