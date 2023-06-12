@@ -32,7 +32,7 @@ export AR=${AR_PATH} CC=${CLANG_PATH} ${BINDGEN_COMMAND}
 
 ### Create and Edit a Data Contract
 
-1. Use the left-side interface to add documents types, properties, and indexes
+1. Use the left-side interface to add document types, properties, and indexes
 2. Click the "Submit" button
 3. View the generated schema in the "Contract" section
 
