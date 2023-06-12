@@ -34,7 +34,7 @@ export AR=${AR_PATH} CC=${CLANG_PATH} ${BINDGEN_COMMAND}
 
 1. Use the left-side interface to add document types, properties, and indexes
 2. Click the "Submit" button
-3. View the generated schema in the "Contract" section
+3. View the generated schema in the "Contract" section on the right side
 
 ### Import a Data Contract
 
