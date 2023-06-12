@@ -4,9 +4,9 @@ This is a simple web app written in Rust using the [Yew](https://yew.rs/) framew
 
 ## Features
 
-- Dynamically generate and modify data contract JSON schemas using a web interface
-- Import existing data contract JSON schemas for editing
-- Validate contracts against Dash Platform Protocol rules
+- Dynamically generate and modify data contract schemas using a web interface
+- Import existing data contract schemas for editing
+- Validate data contract schemas against Dash Platform Protocol rules
 
 ## Setup
 
