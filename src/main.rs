@@ -6,7 +6,7 @@ use wasm_bindgen::JsValue;
 use yew::{html, Component, Html, Event, InputEvent, FocusEvent, TargetCast};
 use serde_json::{json, Map, Value};
 use web_sys::{HtmlSelectElement, console};
-use dpp::{self, consensus::{basic::BasicError, ConsensusError}, prelude::Identifier, Convertible};
+use dpp::{self, consensus::ConsensusError, prelude::Identifier, Convertible};
 
 /// Document type struct
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1394,7 +1394,7 @@ impl Component for Model {
                 .filter_map(|error| {
                     if let ConsensusError::BasicError(inner) = error {
                         if let dpp::errors::consensus::basic::basic_error::BasicError::JsonSchemaError(json_error) = inner {
-                            console::log_1(&JsValue::from_str(&json_error.property_name()));
+                            console::log_1(&JsValue::from_str(&format!("Error summary: {}", json_error.error_summary())));
                         }
                         Some(format!("{}", inner))
                     } else {
@@ -1403,7 +1403,7 @@ impl Component for Model {
                 })
                 .collect()
         }
-
+                        
         let textarea = if self.json_object.len() != 0 {
             html! {
                 <textarea class="textarea" id="json_output" value={if self.json_object.len() != 0 as usize {

@@ -404,7 +404,7 @@ dependencies = [
 [[package]]
 name = "dashpay-contract"
 version = "0.24.0-dev.1"
-source = "git+https://github.com/dashpay/platform.git#0d4a99303ba24ead8bf47158a0c1b9d4bd06338b"
+source = "git+https://github.com/pauldelucia/platform.git#2d925b764a9161ef038dc0ef6de3ac66984bdbb1"
 dependencies = [
  "lazy_static",
  "serde_json",
@@ -426,7 +426,7 @@ dependencies = [
 [[package]]
 name = "data-contracts"
 version = "0.24.0-dev.1"
-source = "git+https://github.com/dashpay/platform.git#0d4a99303ba24ead8bf47158a0c1b9d4bd06338b"
+source = "git+https://github.com/pauldelucia/platform.git#2d925b764a9161ef038dc0ef6de3ac66984bdbb1"
 dependencies = [
  "dashpay-contract",
  "dpns-contract",
@@ -472,7 +472,7 @@ dependencies = [
 [[package]]
 name = "dpns-contract"
 version = "0.24.0-dev.1"
-source = "git+https://github.com/dashpay/platform.git#0d4a99303ba24ead8bf47158a0c1b9d4bd06338b"
+source = "git+https://github.com/pauldelucia/platform.git#2d925b764a9161ef038dc0ef6de3ac66984bdbb1"
 dependencies = [
  "serde_json",
 ]
@@ -480,7 +480,7 @@ dependencies = [
 [[package]]
 name = "dpp"
 version = "0.1.0"
-source = "git+https://github.com/dashpay/platform.git#0d4a99303ba24ead8bf47158a0c1b9d4bd06338b"
+source = "git+https://github.com/pauldelucia/platform.git#2d925b764a9161ef038dc0ef6de3ac66984bdbb1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -577,7 +577,7 @@ dependencies = [
 [[package]]
 name = "feature-flags-contract"
 version = "0.24.0-dev.1"
-source = "git+https://github.com/dashpay/platform.git#0d4a99303ba24ead8bf47158a0c1b9d4bd06338b"
+source = "git+https://github.com/pauldelucia/platform.git#2d925b764a9161ef038dc0ef6de3ac66984bdbb1"
 dependencies = [
  "serde_json",
 ]
@@ -1128,7 +1128,7 @@ dependencies = [
 [[package]]
 name = "masternode-reward-shares-contract"
 version = "0.24.0-dev.1"
-source = "git+https://github.com/dashpay/platform.git#0d4a99303ba24ead8bf47158a0c1b9d4bd06338b"
+source = "git+https://github.com/pauldelucia/platform.git#2d925b764a9161ef038dc0ef6de3ac66984bdbb1"
 dependencies = [
  "serde_json",
 ]
@@ -1376,7 +1376,7 @@ dependencies = [
 [[package]]
 name = "platform-serialization"
 version = "0.1.0"
-source = "git+https://github.com/dashpay/platform.git#0d4a99303ba24ead8bf47158a0c1b9d4bd06338b"
+source = "git+https://github.com/pauldelucia/platform.git#2d925b764a9161ef038dc0ef6de3ac66984bdbb1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1386,7 +1386,7 @@ dependencies = [
 [[package]]
 name = "platform-value"
 version = "0.1.0"
-source = "git+https://github.com/dashpay/platform.git#0d4a99303ba24ead8bf47158a0c1b9d4bd06338b"
+source = "git+https://github.com/pauldelucia/platform.git#2d925b764a9161ef038dc0ef6de3ac66984bdbb1"
 dependencies = [
  "base64 0.13.1",
  "bincode 2.0.0-rc.3",
@@ -1406,7 +1406,7 @@ dependencies = [
 [[package]]
 name = "platform-value-convertible"
 version = "0.1.0"
-source = "git+https://github.com/dashpay/platform.git#0d4a99303ba24ead8bf47158a0c1b9d4bd06338b"
+source = "git+https://github.com/pauldelucia/platform.git#2d925b764a9161ef038dc0ef6de3ac66984bdbb1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2303,7 +2303,7 @@ dependencies = [
 [[package]]
 name = "withdrawals-contract"
 version = "0.24.0-dev.1"
-source = "git+https://github.com/dashpay/platform.git#0d4a99303ba24ead8bf47158a0c1b9d4bd06338b"
+source = "git+https://github.com/pauldelucia/platform.git#2d925b764a9161ef038dc0ef6de3ac66984bdbb1"
 dependencies = [
  "serde_json",
 ]
