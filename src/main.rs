@@ -1,11 +1,10 @@
 //! Dash Platform Data Contract Creator
 
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::{HashMap, HashSet}, sync::Arc};
 use serde::{Serialize, Deserialize};
-use wasm_bindgen::JsValue;
 use yew::{html, Component, Html, Event, InputEvent, FocusEvent, TargetCast};
 use serde_json::{json, Map, Value};
-use web_sys::{HtmlSelectElement, console};
+use web_sys::HtmlSelectElement;
 use dpp::{self, consensus::ConsensusError, prelude::Identifier, Convertible};
 
 /// Document type struct
@@ -93,11 +92,14 @@ enum DataType {
 /// Model is the umbrella structs that contains all the document types 
 /// for the contract and the vector of strings comprising the json object to be output
 struct Model {
+    /// A vector of document types
     document_types: Vec<DocumentType>,
     /// Each full document type is a single string in json_object
     json_object: Vec<String>,
     /// A string containing a full data contract
     imported_json: String,
+    /// DPP validation error messages
+    error_messages: Vec<String>,
 }
 
 /// Messages from input fields which call the functions to update Model
@@ -786,7 +788,6 @@ impl Model {
             let formatted_doc_obj = &final_doc_obj.to_string()[1..final_doc_obj.to_string().len()-1];
             json_arr.push(formatted_doc_obj.to_string());
         }
-        println!("generate_json_object: end");
         json_arr
     }    
 
@@ -1090,6 +1091,44 @@ impl Model {
         }
     }
 
+    fn validate(&mut self) -> Vec<String> {
+        let s = &self.json_object.join(",");
+        let new_s = format!("{{{}}}", s);
+        let json_obj: serde_json::Value = serde_json::from_str(&new_s).unwrap();
+
+        let protocol_version_validator = dpp::version::ProtocolVersionValidator::default();
+        let data_contract_validator = dpp::data_contract::validation::data_contract_validator::DataContractValidator::new(Arc::new(protocol_version_validator));
+        let factory = dpp::data_contract::DataContractFactory::new(1, Arc::new(data_contract_validator));
+        let owner_id = Identifier::random();
+        let contract = factory
+            .create(owner_id, json_obj.clone().into(), None, None)
+            .expect("data in fixture should be correct");
+        let results = contract.data_contract.validate(&contract.data_contract.to_cleaned_object().unwrap()).unwrap_or_default();
+        let errors = results.errors;
+        self.extract_basic_error_messages(&errors)
+    }
+
+    fn extract_basic_error_messages(&self, errors: &[ConsensusError]) -> Vec<String> {
+        let messages: Vec<String> = errors
+            .iter()
+            .filter_map(|error| {
+                if let ConsensusError::BasicError(inner) = error {
+                    if let dpp::errors::consensus::basic::basic_error::BasicError::JsonSchemaError(json_error) = inner {
+                        Some(format!("JsonSchemaError: {}, Path: {}", json_error.error_summary().to_string(), json_error.instance_path().to_string()))
+                    } else { 
+                        Some(format!("{}", inner)) 
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect();
+    
+        let messages: HashSet<String> = messages.into_iter().collect();
+        let messages: Vec<String> = messages.into_iter().collect();
+    
+        messages
+    }
 }
 
 impl Component for Model {
@@ -1103,6 +1142,7 @@ impl Component for Model {
             document_types: vec![default_document_type],
             json_object: vec![],
             imported_json: String::new(),
+            error_messages: vec![],
         }
     }
 
@@ -1143,6 +1183,8 @@ impl Component for Model {
             }
             Msg::Submit => {
                 self.json_object = Some(self.generate_json_object()).unwrap();
+                self.error_messages = Some(self.validate()).unwrap();
+                self.imported_json = String::new();
             }
             Msg::UpdateName(index, name) => {
                 self.document_types[index].name = name;
@@ -1355,7 +1397,6 @@ impl Component for Model {
 
             // Import
             Msg::UpdateImportedJson(import) => {
-                //console::log_1(&JsValue::from_str(&import));
                 self.imported_json = import;
             }
             Msg::Import => {
@@ -1375,35 +1416,7 @@ impl Component for Model {
         let new_s = format!("{{{}}}", s);
         let json_obj: serde_json::Value = serde_json::from_str(&new_s).unwrap();
         let json_pretty = serde_json::to_string_pretty(&json_obj).unwrap();
-
-        // DPP validation
-        let protocol_version_validator = dpp::version::ProtocolVersionValidator::default();
-        let data_contract_validator = dpp::data_contract::validation::data_contract_validator::DataContractValidator::new(Arc::new(protocol_version_validator));
-        let factory = dpp::data_contract::DataContractFactory::new(1, Arc::new(data_contract_validator));
-        let owner_id = Identifier::random();
-        let contract = factory
-            .create(owner_id, json_obj.clone().into(), None, None)
-            .expect("data in fixture should be correct");
-        let results = contract.data_contract.validate(&contract.data_contract.to_cleaned_object().unwrap()).unwrap_or_default();
-        let errors = results.errors;
-        let error_messages = extract_basic_error_messages(&errors);
-
-        fn extract_basic_error_messages(errors: &[ConsensusError]) -> Vec<String> {
-            errors
-                .iter()
-                .filter_map(|error| {
-                    if let ConsensusError::BasicError(inner) = error {
-                        if let dpp::errors::consensus::basic::basic_error::BasicError::JsonSchemaError(json_error) = inner {
-                            console::log_1(&JsValue::from_str(&format!("Error summary: {}", json_error.error_summary())));
-                        }
-                        Some(format!("{}", inner))
-                    } else {
-                        None
-                    }
-                })
-                .collect()
-        }
-                        
+                                
         let textarea = if self.json_object.len() != 0 {
             html! {
                 <textarea class="textarea" id="json_output" value={if self.json_object.len() != 0 as usize {
@@ -1449,23 +1462,25 @@ impl Component for Model {
                 // format and display json object
                 <p class="output-container">
                     <h2>{"Contract"}</h2>
-                    <h3>{if self.json_object.len() != 0 as usize && error_messages.len() > 0 as usize {"Platform validation errors:"} else {""}}</h3>
-                    <div class="error-text">{
-                        if self.json_object.len() != 0 as usize && !error_messages.is_empty() {
+                    <h3>{if self.imported_json.len() == 0 && self.error_messages.len() != 0 {"Validation errors:"} else {""}}</h3>
+                    <div>{
+                        if self.imported_json.len() == 0 && self.error_messages.len() != 0 {
                             html! {
-                                <ul>
-                                    { for error_messages.iter().map(|i| html! { <li>{i.clone()}</li> }) }
+                                <ul class="error-text">
+                                    { for self.error_messages.iter().map(|i| html! { <li>{i.clone()}</li> }) }
                                 </ul>
                             }
-                        } else { 
-                            html! { "" }
+                        } else if self.imported_json.len() == 0 && self.error_messages.len() == 0 &&self.json_object.len() > 0 { 
+                            html! {<p class="passed-text">{"Validation passed ✓"}</p>}
+                        } else {
+                            html! {""}
                         }
                     }</div>                    
-                    <h3>{if self.json_object.len() != 0 as usize {"With whitespace:"} else {""}}</h3>
+                    <h3>{if self.json_object.len() != 0 {"With whitespace:"} else {""}}</h3>
                     <pre>
-                    <textarea class="textarea" id="json_output" placeholder="Paste here to import" value={if self.json_object.len() == 0 as usize {self.imported_json.clone()} else {json_pretty}} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateImportedJson(e.target_dyn_into::<web_sys::HtmlTextAreaElement>().unwrap().value()))}></textarea>
+                    <textarea class="textarea" id="json_output" placeholder="Paste here to import" value={if self.json_object.len() == 0 {self.imported_json.clone()} else {json_pretty}} oninput={ctx.link().callback(move |e: InputEvent| Msg::UpdateImportedJson(e.target_dyn_into::<web_sys::HtmlTextAreaElement>().unwrap().value()))}></textarea>
                     </pre>
-                    <h3>{if self.json_object.len() != 0 as usize {"Without whitespace:"} else {""}}</h3>
+                    <h3>{if self.json_object.len() != 0 {"Without whitespace:"} else {""}}</h3>
                     <pre>{textarea}</pre>
                     <p><b>
                     {
