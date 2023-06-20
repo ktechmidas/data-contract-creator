@@ -25,8 +25,8 @@ export CLANG_PATH=$(command -v clang)
 export AR=${AR_PATH} CC=${CLANG_PATH} ${BUILD_COMMAND}
 export AR=${AR_PATH} CC=${CLANG_PATH} ${BINDGEN_COMMAND}
 ```
-4. Change into the project directory: `cd data-contract-creator`
-5. Start the app `trunk serve --open`
+3. Change into the project directory: `cd data-contract-creator`
+4. Start the app `trunk serve --open`
 
 ## Usage
 
