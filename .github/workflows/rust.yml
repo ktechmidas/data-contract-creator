@@ -13,11 +13,18 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-
     steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-region: ${{ secrets.AWS_REGION }}
+        role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
     - uses: actions/checkout@v3
     - name: Build
       run: |
         cargo install --locked trunk
         cargo install wasm-pack
         wasm-pack build --target web --out-name wasm --out-dir ./static
+    - name: Copy site to s3 with the AWS CLI
+      run: |
+        aws --region ${{ secrets.AWS_REGION }} s3 sync --acl private dist/ s3://${{ secrets.S3_BUCKET }}/${{ secrets.S3_PREFIX }}/
