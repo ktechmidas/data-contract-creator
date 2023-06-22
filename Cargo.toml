@@ -16,3 +16,5 @@ dpp = { git="https://github.com/pauldelucia/platform.git", package="dpp", defaul
 
 [lib]
 crate-type = ["cdylib", "rlib"]
+name = "data-contract-creator"
+path = "src/main.rs"
